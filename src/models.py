@@ -10,3 +10,4 @@ class RoomReading:
     humidity: float
     valve_position: float
     recorded_at: datetime
+    level: str = "Unassigned"

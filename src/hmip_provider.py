@@ -6,7 +6,7 @@ from typing import Iterable, Optional, Union
 from homematicip.home import Home
 
 from src.models import RoomReading
-from src.room_layout import canonical_room_name
+from src.room_layout import level_from_controller_devices, canonical_room_name
 
 
 CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.ini"
@@ -31,27 +31,27 @@ def _percent(value: Optional[float]) -> Optional[float]:
 
 
 def _room_groups(home: Home) -> Iterable[object]:
-    groups = [
+    room_groups = [
         group
         for group in home.groups
-        if getattr(group, "groupType", None) != "META"
+        if getattr(group, "groupType", None) in {"HEATING", "INDOOR_CLIMATE"}
         and getattr(group, "metaGroup", None) is not None
     ]
-    if groups:
-        return groups
-    return [group for group in home.groups if getattr(group, "groupType", None) != "META"]
+    return room_groups
 
 
 def map_room_readings(home: Home) -> list[RoomReading]:
     recorded_at = datetime.now(timezone.utc)
     readings: list[RoomReading] = []
-    grouped_devices: dict[str, list[object]] = {}
+    grouped_devices: dict[tuple[str, str], list[object]] = {}
 
     for group in _room_groups(home):
         room_name = canonical_room_name(getattr(group, "label", None) or "Unnamed room")
-        grouped_devices.setdefault(room_name, []).extend(getattr(group, "devices", []))
+        devices = getattr(group, "devices", [])
+        level = level_from_controller_devices(devices)
+        grouped_devices.setdefault((room_name, level), []).extend(devices)
 
-    for room_name, devices in grouped_devices.items():
+    for (room_name, level), devices in grouped_devices.items():
         temperatures: list[float] = []
         targets: list[float] = []
         humidities: list[float] = []
@@ -92,6 +92,7 @@ def map_room_readings(home: Home) -> list[RoomReading]:
                 humidity=sum(humidities) / len(humidities) if humidities else 0.0,
                 valve_position=sum(valves) / len(valves) if valves else 0.0,
                 recorded_at=recorded_at,
+                level=level,
             )
         )
 

@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Union
 
 from src.models import RoomReading
-from src.room_layout import ROOM_ALIASES
+from src.room_layout import ROOM_ALIASES, ROOM_LEVELS, UNASSIGNED
 
 
 SCHEMA = """
@@ -26,10 +26,21 @@ def initialize_database(database_path: Union[str, Path]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(path) as connection:
         connection.executescript(SCHEMA)
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(room_readings)")}
+        if "level" not in columns:
+            connection.execute(
+                f"ALTER TABLE room_readings ADD COLUMN level TEXT NOT NULL DEFAULT '{UNASSIGNED}'"
+            )
+        connection.execute("UPDATE room_readings SET room_name = TRIM(room_name)")
         for alias, canonical_name in ROOM_ALIASES.items():
             connection.execute(
                 "UPDATE room_readings SET room_name = ? WHERE room_name = ?",
                 (canonical_name, alias),
+            )
+        for room_name, level in ROOM_LEVELS.items():
+            connection.execute(
+                "UPDATE room_readings SET level = ? WHERE room_name = ?",
+                (level, room_name),
             )
 
 
@@ -43,6 +54,7 @@ def save_readings(database_path: Union[str, Path], readings: list[RoomReading]) 
             reading.humidity,
             reading.valve_position,
             reading.recorded_at.isoformat(),
+            reading.level,
         )
         for reading in readings
     ]
@@ -55,8 +67,9 @@ def save_readings(database_path: Union[str, Path], readings: list[RoomReading]) 
                 target_temperature,
                 humidity,
                 valve_position,
-                recorded_at
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                recorded_at,
+                level
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             rows,
         )
@@ -69,13 +82,17 @@ def get_latest_readings(database_path: Union[str, Path]) -> list[dict[str, objec
         rows = connection.execute(
             """
             SELECT room_name, current_temperature, target_temperature,
-                   humidity, valve_position, recorded_at
-            FROM room_readings AS readings
-            WHERE recorded_at = (
-                SELECT MAX(latest.recorded_at)
-                FROM room_readings AS latest
-                WHERE latest.room_name = readings.room_name
-            )
+                   humidity, valve_position, recorded_at, level
+            FROM (
+                SELECT room_name, current_temperature, target_temperature,
+                       humidity, valve_position, recorded_at, level,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY room_name
+                           ORDER BY recorded_at DESC, id DESC
+                       ) AS row_number
+                FROM room_readings
+            ) AS latest
+            WHERE row_number = 1
             ORDER BY room_name
             """
         ).fetchall()

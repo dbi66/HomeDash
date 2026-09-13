@@ -145,6 +145,8 @@ sh scripts/uninstall_production_launch_agent.sh
 
 Production logs are written to `data/logs/`, which is ignored by Git. Installing or removing the LaunchAgent does not delete or reset any database.
 
+The production installation includes a separate collector LaunchAgent. It runs one Homematic snapshot every five minutes and exits; the Streamlit server remains an independent continuously running service. Collector logs are written to `data/logs/collector.*.log`.
+
 ## Trusted Network Access
 
 The default launcher binds to localhost. To access the dashboard from another device on the same trusted network or VPN:

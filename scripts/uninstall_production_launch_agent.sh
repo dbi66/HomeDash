@@ -5,5 +5,7 @@ PLIST="$HOME/Library/LaunchAgents/com.homedash.production.plist"
 DOMAIN="gui/$(id -u)"
 
 launchctl bootout "$DOMAIN/com.homedash.production" 2>/dev/null || true
+launchctl bootout "$DOMAIN/com.homedash.production-collector" 2>/dev/null || true
 rm -f "$PLIST"
+rm -f "$HOME/Library/LaunchAgents/com.homedash.production-collector.plist"
 echo "Production LaunchAgent removed. Existing databases were not changed."

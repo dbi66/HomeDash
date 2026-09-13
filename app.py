@@ -652,7 +652,10 @@ with st.container(border=True):
     else:
         st.query_params["room"] = selected_room
     render_history(selected_room)
-    with st.expander("Event log"):
+    if st.button("Event log", key="event-log-button", width="stretch"):
+        st.session_state["show_event_log"] = not st.session_state.get("show_event_log", False)
+        st.rerun()
+    if st.session_state.get("show_event_log", False):
         events = get_room_events(DATABASE_PATH, selected_room)
         if not events:
             st.caption("No valve or target-temperature events recorded yet.")

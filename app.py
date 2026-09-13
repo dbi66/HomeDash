@@ -258,6 +258,11 @@ st.markdown(
                     margin: 0.45rem 0.35rem 0 0;
                     padding: 0.25rem 0.5rem;
                 }
+
+                [class*="st-key-settings-button"] button p {
+                    font-size: 1.45rem;
+                    line-height: 1;
+                }
     </style>
     """,
     unsafe_allow_html=True,
@@ -342,13 +347,17 @@ with header_actions[2]:
         except HomematicProviderError as error:
             st.error(str(error))
 with header_actions[3]:
-    if st.button("⚙", help="Einstellungen", width="stretch"):
+    if st.button("⚙", key="settings-button", help="Einstellungen", width="stretch"):
         st.session_state["show_settings"] = not st.session_state.get("show_settings", False)
         st.rerun()
 
-if st.button("Alle Diagramme", type="primary", width="stretch"):
-    st.session_state["show_all_graphs"] = not st.session_state.get("show_all_graphs", False)
-    st.rerun()
+function_choice = st.selectbox(
+    "Weitere Funktionen",
+    options=("Keine Auswahl", "Alle Diagramme"),
+    key="function-navigation",
+    label_visibility="collapsed",
+)
+st.session_state["show_all_graphs"] = function_choice == "Alle Diagramme"
 
 if st.session_state.get("show_settings", False):
     with st.container(border=True):
@@ -399,7 +408,6 @@ st.session_state["selected_room"] = selected_room
 
 
 def render_overview() -> None:
-    st.markdown('<div class="level-heading">Raeume</div>', unsafe_allow_html=True)
     grouped = group_readings_by_level(readings)
     for level in (UPSTAIRS, BASE_LEVEL, UNASSIGNED):
         level_readings = grouped.get(level, [])

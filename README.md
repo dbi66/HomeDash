@@ -64,7 +64,7 @@ HOMEDASH_BIND=0.0.0.0 HOMEDASH_PORT=8501 sh scripts/run_dashboard.sh
 
 Find the Mac's LAN address with `ipconfig getifaddr en0`, then open `http://<mac-address>:8501` on the other device. The launcher does not add authentication or HTTPS, so do not expose this server directly to the public internet.
 
-The room cards automatically switch to a compact two-column layout on narrow iPhone-sized screens.
+The room cards automatically switch to a compact two-column layout on narrow iPhone-sized screens. Tap any room tile to select it and load that room's historical charts.
 
 Keep `config.ini` local. It contains the Homematic IP auth token and is excluded from Git.
 

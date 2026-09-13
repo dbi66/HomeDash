@@ -127,6 +127,19 @@ st.markdown(
                 margin: 0.75rem 0 1.25rem;
             }
 
+            [data-testid="stHorizontalBlock"] {
+                flex-wrap: nowrap;
+                gap: 0.5rem;
+                max-width: calc(100vw - 1.5rem) !important;
+                width: calc(100vw - 1.5rem) !important;
+            }
+
+            [data-testid="stColumn"] {
+                flex: 0 0 calc(50% - 0.25rem);
+                min-width: 0;
+                width: calc(50% - 0.25rem) !important;
+            }
+
             .level-heading {
                 font-size: 1.1rem;
                 margin-top: 1.2rem;
@@ -168,7 +181,27 @@ st.markdown(
             .room-card__meta span {
                 white-space: nowrap;
             }
+
+                .stButton button[kind="secondary"] {
+                    min-height: 112px;
+                    padding: 0.65rem;
+                }
         }
+
+            .stButton button[kind="secondary"] {
+                background: #dbeafe;
+                border: 1px solid rgba(16, 42, 67, 0.12);
+                border-radius: 10px;
+                color: #102a43;
+                min-height: 128px;
+                text-align: left;
+                white-space: pre-wrap;
+            }
+
+            .stButton button[kind="secondary"] p {
+                font-size: 0.86rem;
+                line-height: 1.55;
+            }
     </style>
     """,
     unsafe_allow_html=True,
@@ -231,23 +264,21 @@ def valve_color(valve_position: float) -> str:
     return "rgb({}, {}, {})".format(*color)
 
 
-def render_room_cards(level_readings: list[dict[str, object]]) -> None:
-    cards = []
-    for reading in level_readings:
+def render_room_tiles(level_readings: list[dict[str, object]]) -> None:
+    columns = st.columns(min(2, len(level_readings)))
+    for index, reading in enumerate(level_readings):
         room_name = escape(str(reading["room_name"]))
         valve_position = float(reading["valve_position"])
         status = "Heating" if valve_position > 0 else "Idle"
-        cards.append(
-            f'<article class="room-card" style="background: {valve_color(valve_position)};">'
-            f'<div class="room-card__top"><span class="room-card__name">{room_name}</span>'
-            f'<span class="room-card__status">{status}</span></div>'
-            f'<div class="room-card__reading"><span class="room-card__temperature">'
-            f'{float(reading["current_temperature"]):.1f} C</span><span class="room-card__target">'
-            f'Target {float(reading["target_temperature"]):.1f} C</span></div>'
-            f'<div class="room-card__meta"><span>Humidity <strong>{float(reading["humidity"]):.0f}%</strong></span>'
-            f'<span>Valve <strong>{valve_position:.0f}%</strong></span></div></article>'
+        tile_label = (
+            f"**{room_name}**\n\n"
+            f"{float(reading['current_temperature']):.1f} C  |  Target {float(reading['target_temperature']):.1f} C\n\n"
+            f"Humidity {float(reading['humidity']):.0f}%  |  Valve {valve_position:.0f}%  |  {status}"
         )
-    st.markdown(f'<section class="room-grid">{"".join(cards)}</section>', unsafe_allow_html=True)
+        with columns[index % len(columns)]:
+            if st.button(tile_label, key=f"room-tile-{reading['room_name']}", width="stretch"):
+                st.session_state["selected_room"] = str(reading["room_name"])
+                st.rerun()
 
 
 grouped_readings = group_readings_by_level(readings)
@@ -258,13 +289,13 @@ for level in (UPSTAIRS, BASE_LEVEL, UNASSIGNED):
             f'<div style="color:#102a43;font-size:1.35rem;font-weight:750;margin:1.75rem 0 0.25rem;">{escape(level)}</div>',
             unsafe_allow_html=True,
         )
-        render_room_cards(level_readings)
+        render_room_tiles(level_readings)
 
 with st.expander("Show latest readings table"):
     st.dataframe(
         readings,
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
         column_config={
             "room_name": "Room",
             "current_temperature": st.column_config.NumberColumn("Current (C)", format="%.1f"),
@@ -280,7 +311,11 @@ st.markdown(
     unsafe_allow_html=True,
 )
 room_names = sorted({str(reading["room_name"]) for reading in readings})
-history_room = st.selectbox("Room", room_names)
+selected_room = st.session_state.get("selected_room", room_names[0])
+if selected_room not in room_names:
+    selected_room = room_names[0]
+history_room = st.selectbox("Selected room", room_names, index=room_names.index(selected_room))
+st.session_state["selected_room"] = history_room
 history_window = st.selectbox(
     "Time range",
     options=(24, 168, 720),

@@ -1,10 +1,10 @@
 import re
 from html import escape
 
-import altair as alt
 import pandas as pd
 import streamlit as st
 
+from src.charts import render_climate_chart
 from src.database import get_latest_readings, get_room_events, get_room_history, get_room_trends, save_readings, save_viessmann_snapshots
 from src.config import DATABASE_PATH, PROVIDER
 from src.history import save_home_snapshot
@@ -589,111 +589,6 @@ def render_overview_graphs() -> None:
             continue
         with graph_columns[index % 2]:
             render_climate_chart(pd.DataFrame(history), room_name, 180, "Fixed range", "all")
-
-
-def render_climate_chart(
-    history_frame: pd.DataFrame,
-    title: str,
-    height: int,
-    scale_mode: str,
-    key_prefix: str,
-) -> None:
-    history_frame["recorded_at"] = pd.to_datetime(history_frame["recorded_at"], utc=True)
-    temperature_scale = alt.Scale(domain=[10, 30]) if scale_mode == "Fixed range" else alt.Scale(zero=False)
-    percent_scale = alt.Scale(domain=[0, 100]) if scale_mode == "Fixed range" else alt.Scale(zero=False)
-    time_axis = alt.Axis(format="%H:%M", title=None)
-    current = history_frame[["recorded_at", "current_temperature"]].rename(columns={"current_temperature": "value"})
-    target = history_frame[["recorded_at", "target_temperature"]].rename(columns={"target_temperature": "value"})
-    humidity = history_frame[["recorded_at", "humidity"]].rename(columns={"humidity": "value"})
-    valve = history_frame[["recorded_at", "valve_position"]].rename(columns={"valve_position": "value"})
-    current["series"] = "IST"
-    target["series"] = "Ziel"
-    humidity["series"] = "Feuchtigkeit"
-    valve["series"] = "Ventil"
-    chart_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", title)
-    selected_series = []
-    with st.container(border=True):
-        render_chart_legend()
-        selector_columns = st.columns(4)
-        for column, series_name in zip(selector_columns, ("IST", "Ziel", "Feuchtigkeit", "Ventil")):
-            with column:
-                if st.checkbox(series_name, value=True, key=f"chart-line-{key_prefix}-{chart_slug}-{series_name}"):
-                    selected_series.append(series_name)
-    if not selected_series:
-        st.info("Select at least one line.")
-        return
-    current = current[current["series"].isin(selected_series)]
-    target = target[target["series"].isin(selected_series)]
-    humidity = humidity[humidity["series"].isin(selected_series)]
-    valve = valve[valve["series"].isin(selected_series)]
-    temperature_axis = alt.Axis(title="Temperature (C)", orient="left", titleColor="#0b7285")
-    percentage_axis = alt.Axis(title="Humidity / valve (%)", orient="right", titleColor="#7c3aed")
-    label_axis = alt.Axis(title=None, labels=False, ticks=False, domain=False)
-
-    def line(data: pd.DataFrame, color: str, dash=None, scale=None, axis=None, points=False):
-        mark = {"color": color, "strokeWidth": 2}
-        if dash:
-            mark["strokeDash"] = dash
-        if points:
-            mark["point"] = {"size": 18, "filled": True}
-        return alt.Chart(data).mark_line(**mark).encode(
-            x=alt.X("recorded_at:T", axis=time_axis, scale=alt.Scale(padding=20)),
-            y=alt.Y("value:Q", scale=scale, axis=axis),
-            color=alt.Color(
-                "series:N",
-                scale=alt.Scale(
-                    domain=["IST", "Ziel", "Feuchtigkeit", "Ventil"],
-                    range=["#d9480f", "#64748b", "#7c3aed", "#e03131"],
-                ),
-                legend=None,
-            ),
-        )
-
-    def endpoint_label(data: pd.DataFrame, color: str, fmt: str, scale=None, dy=0):
-        return (
-            alt.Chart(data)
-            .transform_window(
-                rank="rank()",
-                sort=[alt.SortField("recorded_at", order="descending")],
-            )
-            .transform_filter(alt.datum.rank == 1)
-            .mark_text(align="left", dx=10, dy=dy, fontSize=10, color=color)
-            .encode(
-                x=alt.X("recorded_at:T", scale=alt.Scale(padding=20)),
-                y=alt.Y("value:Q", scale=scale, axis=label_axis),
-                text=alt.Text("value:Q", format=fmt),
-            )
-        )
-
-    layers = []
-    if not current.empty:
-        layers.extend([line(current, "#d9480f", scale=temperature_scale, axis=temperature_axis, points=len(history_frame) <= 72), endpoint_label(current, "#d9480f", ".1f", temperature_scale, dy=-8)])
-    if not target.empty:
-        layers.extend([line(target, "#94a3b8", dash=[6, 3], scale=temperature_scale, axis=label_axis), endpoint_label(target, "#64748b", ".1f", temperature_scale, dy=10)])
-    if not humidity.empty:
-        layers.extend([line(humidity, "#7c3aed", dash=[2, 2], scale=percent_scale, axis=percentage_axis), endpoint_label(humidity, "#7c3aed", ".0f", percent_scale, dy=-8)])
-    if not valve.empty:
-        layers.extend([line(valve, "#e03131", dash=[2, 2], scale=percent_scale, axis=label_axis), endpoint_label(valve, "#e03131", ".0f", percent_scale, dy=10)])
-
-    chart = alt.layer(*layers).resolve_scale(y="independent").properties(
-        height=height,
-        title=title,
-        padding={"right": 70, "left": 20},
-    )
-    st.altair_chart(chart, use_container_width=True)
-
-
-def render_chart_legend() -> None:
-    st.markdown(
-        '<div style="color:#486581;font-size:0.78rem;margin:0.35rem 0 0.75rem;">'
-        '<strong>Legende:</strong> '
-        '<span style="color:#d9480f;font-weight:700">&#9644; IST-Temperatur</span> &nbsp; '
-        '<span style="color:#64748b">- - Zieltemperatur</span> &nbsp; '
-        '<span style="color:#7c3aed">·· Feuchtigkeit</span> &nbsp; '
-        '<span style="color:#e03131">·· Ventil</span>'
-        '</div>',
-        unsafe_allow_html=True,
-    )
 
 
 def render_history(room_name: str) -> None:

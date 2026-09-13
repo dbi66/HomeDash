@@ -347,6 +347,10 @@ if "navigation-last" not in st.session_state:
 elif route_hint == "Raumdetail" and st.session_state["navigation-last"] == "Home":
     st.session_state["navigation-last"] = "Raumdetail"
 
+pending_navigation = st.session_state.pop("pending-navigation", None)
+if pending_navigation:
+    st.session_state["function-navigation"] = pending_navigation
+
 function_choice = st.selectbox(
     "Navigation",
     options=("Home", "Raumdetail", "Alle Diagramme", "Einstellungen"),
@@ -442,7 +446,7 @@ def render_overview() -> None:
             with columns[index % len(columns)]:
                 if st.button(label, key=f"overview-room-{room_name}", width="stretch"):
                     st.session_state["selected_room"] = room_name
-                    st.session_state["function-navigation"] = "Raumdetail"
+                    st.session_state["pending-navigation"] = "Raumdetail"
                     st.query_params["room"] = room_name
                     st.query_params["view"] = "detail"
                     st.rerun()
@@ -678,7 +682,7 @@ def render_room_tiles(level_readings: list[dict[str, object]]) -> None:
                 type="secondary",
             ):
                 st.session_state["selected_room"] = str(reading["room_name"])
-                st.session_state["function-navigation"] = "Raumdetail"
+                st.session_state["pending-navigation"] = "Raumdetail"
                 st.query_params["room"] = str(reading["room_name"])
                 st.rerun()
 

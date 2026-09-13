@@ -181,16 +181,21 @@ def get_room_trends(database_path: Union[str, Path], room_name: str) -> dict[str
 
     current, previous = rows[0], rows[1]
 
-    def direction(current_value: float, previous_value: float) -> str:
-        if current_value > previous_value:
+    def direction(current_value: float, previous_value: float, quarter: float, full: float) -> str:
+        change = current_value - previous_value
+        if change >= full:
             return "↑"
-        if current_value < previous_value:
+        if change >= quarter:
+            return "↗"
+        if change <= -full:
             return "↓"
+        if change <= -quarter:
+            return "↘"
         return "→"
 
     return {
-        "temperature": direction(current[0], previous[0]),
-        "humidity": direction(current[1], previous[1]),
+        "temperature": direction(current[0], previous[0], quarter=0.1, full=0.5),
+        "humidity": direction(current[1], previous[1], quarter=1.0, full=5.0),
     }
 
 

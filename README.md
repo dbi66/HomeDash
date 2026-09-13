@@ -110,6 +110,8 @@ The dashboard uses German room labels. `Kitchen` and `Küche` are displayed as `
 
 The Home view shows the room overview only. Select a room to open its detail view with controls, history, and an event log. The detail charts use 10-30 C as the default temperature scale and 0-100% for humidity and valve values; **Fit data** is available when the fixed range is not useful. Valve openings and target-temperature changes are recorded as room events.
 
+Room tiles show five-state trends beside temperature and humidity: `↑` strong increase, `↗` slight increase, `→` no meaningful change, `↘` slight decrease, and `↓` strong decrease. Temperature uses `0.1/0.5 C` thresholds; humidity uses `1/5` percentage-point thresholds.
+
 Open **Einstellungen** in the dashboard to reread the current Homematic IP devices. **Geraetehierarchie anzeigen** shows a graphical Home -> device -> channel tree with compact device cards and channel chips.
 
 The selected room reports its current target temperature in the room card and history charts. HomeDash does not write target temperatures or other heating settings back to Homematic IP.

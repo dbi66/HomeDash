@@ -44,8 +44,14 @@ def _room_groups(home: Home) -> Iterable[object]:
 def map_room_readings(home: Home) -> list[RoomReading]:
     recorded_at = datetime.now(timezone.utc)
     readings: list[RoomReading] = []
+    seen_room_names: set[str] = set()
 
     for group in _room_groups(home):
+        room_name = getattr(group, "label", None) or "Unnamed room"
+        if room_name in seen_room_names:
+            continue
+        seen_room_names.add(room_name)
+
         temperatures: list[float] = []
         targets: list[float] = []
         humidities: list[float] = []
@@ -80,7 +86,7 @@ def map_room_readings(home: Home) -> list[RoomReading]:
         current_temperature = sum(temperatures) / len(temperatures)
         readings.append(
             RoomReading(
-                room_name=getattr(group, "label", None) or "Unnamed room",
+                room_name=room_name,
                 current_temperature=current_temperature,
                 target_temperature=sum(targets) / len(targets) if targets else current_temperature,
                 humidity=sum(humidities) / len(humidities) if humidities else 0.0,

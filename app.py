@@ -321,18 +321,13 @@ def render_device_hierarchy(home: object) -> None:
     st.markdown(tree, unsafe_allow_html=True)
 
 
-header_actions = st.columns([7, 1, 1, 1])
+header_actions = st.columns([7, 1, 2])
 with header_actions[0]:
     st.markdown(
         f'<div class="dashboard-header"><h1>HomeClimate Dashboard</h1><p>Data provider: {escape(PROVIDER)}</p></div>',
         unsafe_allow_html=True,
     )
 with header_actions[1]:
-    if st.button("Home", width="stretch"):
-        st.query_params.clear()
-        st.session_state["selected_room"] = room_names[0] if "room_names" in locals() else ""
-        st.rerun()
-with header_actions[2]:
     if st.button("Refresh", help="Read current Homematic IP values", width="stretch"):
         try:
             if PROVIDER == "homematic":
@@ -346,18 +341,39 @@ with header_actions[2]:
             st.rerun()
         except HomematicProviderError as error:
             st.error(str(error))
-with header_actions[3]:
-    if st.button("⚙", key="settings-button", help="Einstellungen", width="stretch"):
-        st.session_state["show_settings"] = not st.session_state.get("show_settings", False)
-        st.rerun()
+route_hint = "Raumdetail" if st.query_params.get("view") == "detail" else "Home"
+if "navigation-last" not in st.session_state:
+    st.session_state["navigation-last"] = route_hint
+elif route_hint == "Raumdetail" and st.session_state["navigation-last"] == "Home":
+    st.session_state["navigation-last"] = "Raumdetail"
 
 function_choice = st.selectbox(
-    "Weitere Funktionen",
-    options=("Keine Auswahl", "Alle Diagramme"),
+    "Navigation",
+    options=("Home", "Raumdetail", "Alle Diagramme", "Einstellungen"),
     key="function-navigation",
     label_visibility="collapsed",
 )
-st.session_state["show_all_graphs"] = function_choice == "Alle Diagramme"
+previous_choice = st.session_state.get("navigation-last")
+st.session_state["navigation-last"] = function_choice
+if function_choice == "Home":
+    st.session_state["show_all_graphs"] = False
+    if function_choice != previous_choice or st.session_state.get("show_settings", False) or st.query_params:
+        st.session_state["show_settings"] = False
+        st.query_params.clear()
+        st.rerun()
+elif function_choice == "Raumdetail":
+    st.session_state["show_all_graphs"] = False
+    st.session_state["show_settings"] = False
+    if function_choice != previous_choice and not st.query_params.get("room"):
+        st.query_params["room"] = st.session_state.get("selected_room", "")
+        st.query_params["view"] = "detail"
+        st.rerun()
+elif function_choice == "Alle Diagramme":
+    st.session_state["show_all_graphs"] = True
+    st.session_state["show_settings"] = False
+else:
+    st.session_state["show_all_graphs"] = False
+    st.session_state["show_settings"] = True
 
 if st.session_state.get("show_settings", False):
     with st.container(border=True):
@@ -426,12 +442,45 @@ def render_overview() -> None:
             with columns[index % len(columns)]:
                 if st.button(label, key=f"overview-room-{room_name}", width="stretch"):
                     st.session_state["selected_room"] = room_name
+                    st.session_state["function-navigation"] = "Raumdetail"
                     st.query_params["room"] = room_name
                     st.query_params["view"] = "detail"
                     st.rerun()
 
 
+def render_overview_graphs() -> None:
+    st.markdown('<div class="level-heading">Alle Diagramme</div>', unsafe_allow_html=True)
+    hours = st.selectbox(
+        "History range",
+        options=(24, 168, 720),
+        format_func=lambda value: {24: "Last 24 hours", 168: "Last 7 days", 720: "Last 30 days"}[value],
+        key="overview-all-graphs-window",
+    )
+    graph_columns = st.columns(2)
+    for index, room_name in enumerate(room_names):
+        history = get_room_history(DATABASE_PATH, room_name, hours)
+        if len(history) < 2:
+            continue
+        frame = pd.DataFrame(history)
+        frame["recorded_at"] = pd.to_datetime(frame["recorded_at"], utc=True)
+        frame = frame.melt(
+            id_vars="recorded_at",
+            value_vars=["current_temperature", "target_temperature"],
+            var_name="series",
+            value_name="temperature",
+        )
+        chart = alt.Chart(frame).mark_line().encode(
+            x=alt.X("recorded_at:T", axis=alt.Axis(format="%H:%M", title=None)),
+            y=alt.Y("temperature:Q", title="C", scale=alt.Scale(domain=[10, 30])),
+            color=alt.Color("series:N", title=None),
+        ).properties(height=150, title=room_name)
+        with graph_columns[index % 2]:
+            st.altair_chart(chart, use_container_width=True)
+
+
 if page == "overview":
+    if st.session_state.get("show_all_graphs", False):
+        render_overview_graphs()
     render_overview()
     st.stop()
 
@@ -629,6 +678,7 @@ def render_room_tiles(level_readings: list[dict[str, object]]) -> None:
                 type="secondary",
             ):
                 st.session_state["selected_room"] = str(reading["room_name"])
+                st.session_state["function-navigation"] = "Raumdetail"
                 st.query_params["room"] = str(reading["room_name"])
                 st.rerun()
 

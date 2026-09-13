@@ -402,10 +402,13 @@ with header_actions[2]:
 
     pending_navigation = st.session_state.pop("pending-navigation", None)
     pending_room = st.session_state.pop("pending-room", None)
+    pending_view = st.session_state.pop("pending-view", None)
     if pending_navigation:
         st.session_state["function-navigation"] = pending_navigation
     if pending_room:
         st.session_state["selected_room"] = pending_room
+    if pending_view:
+        st.session_state["view"] = pending_view
 
     function_choice = st.selectbox(
         "Navigation",
@@ -419,12 +422,14 @@ if function_choice == "Home":
     st.session_state["show_all_graphs"] = False
     if function_choice != previous_choice or st.session_state.get("show_settings", False) or st.query_params:
         st.session_state["show_settings"] = False
+        st.session_state["view"] = "overview"
         st.query_params.clear()
         st.rerun()
 elif function_choice == "Raumdetail":
     st.session_state["show_all_graphs"] = False
     st.session_state["show_settings"] = False
     if function_choice != previous_choice and not st.query_params.get("room"):
+        st.session_state["view"] = "detail"
         st.query_params["room"] = st.session_state.get("selected_room", "")
         st.query_params["view"] = "detail"
         st.rerun()
@@ -505,7 +510,7 @@ if not readings:
 
 room_names = sorted({str(reading["room_name"]) for reading in readings})
 query_room = st.query_params.get("room")
-page = st.query_params.get("view", "detail" if query_room else "overview")
+page = st.session_state.get("view", st.query_params.get("view", "detail" if query_room else "overview"))
 selected_room = query_room or st.session_state.get("selected_room", room_names[0])
 if selected_room not in room_names:
     selected_room = room_names[0]
@@ -554,6 +559,7 @@ def render_overview() -> None:
                     st.session_state["selected_room"] = room_name
                     st.session_state["pending-navigation"] = "Raumdetail"
                     st.session_state["pending-room"] = room_name
+                    st.session_state["pending-view"] = "detail"
                     st.query_params.clear()
                     st.query_params.update({"room": room_name, "view": "detail"})
                     st.rerun()
@@ -774,6 +780,7 @@ def render_room_tiles(level_readings: list[dict[str, object]]) -> None:
                 st.session_state["selected_room"] = str(reading["room_name"])
                 st.session_state["pending-navigation"] = "Raumdetail"
                 st.session_state["pending-room"] = str(reading["room_name"])
+                st.session_state["pending-view"] = "detail"
                 st.query_params.clear()
                 st.query_params.update({"room": str(reading["room_name"]), "view": "detail"})
                 st.rerun()

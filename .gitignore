@@ -7,6 +7,7 @@ DerivedData/
 xcuserdata/
 data/*.db
 data/backups/
+data/logs/
 .env
 config.ini
 data/vicare_token.json

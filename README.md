@@ -101,6 +101,37 @@ Run without Homematic hardware:
 HOMEDASH_PROVIDER=mock streamlit run app.py
 ```
 
+## Production and Development Profiles
+
+Production and development use separate ports and databases:
+
+| Profile | Start method | Port | Database |
+|---|---|---:|---|
+| Production | macOS LaunchAgent | `8501` | `data/heating_data.db` |
+| Development/test | Manual | `8502` | `data/heating_data-test.db` |
+
+Start the development version manually:
+
+```bash
+sh scripts/run_development.sh
+```
+
+The development profile never writes to the production database unless `HOMEDASH_DATABASE` is explicitly overridden.
+
+Install production as a macOS LaunchAgent so it starts at login and restarts if it exits:
+
+```bash
+sh scripts/install_production_launch_agent.sh
+```
+
+Remove the automatic production service:
+
+```bash
+sh scripts/uninstall_production_launch_agent.sh
+```
+
+Production logs are written to `data/logs/`, which is ignored by Git. Installing or removing the LaunchAgent does not delete or reset any database.
+
 ## Trusted Network Access
 
 The default launcher binds to localhost. To access the dashboard from another device on the same trusted network or VPN:

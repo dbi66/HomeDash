@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import re
 from html import escape
 
 import altair as alt
@@ -451,6 +452,10 @@ def valve_meter(valve_position: float) -> str:
     return "[{}{}]".format("#" * filled, "-" * (10 - filled))
 
 
+def room_widget_slug(room_name: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9_-]", "-", room_name)
+
+
 def render_overview() -> None:
     grouped = group_readings_by_level(readings)
     for level in (UPSTAIRS, BASE_LEVEL, UNASSIGNED):
@@ -672,6 +677,13 @@ def render_room_tiles(level_readings: list[dict[str, object]]) -> None:
             f"Humidity {float(reading['humidity']):.0f}%  |  Valve {valve_position:.0f}%  |  {selection}"
         )
         with columns[index % len(columns)]:
+            color = valve_color(valve_position)
+            widget_slug = room_widget_slug(str(reading["room_name"]))
+            st.markdown(
+                f"<style>.st-key-overview-room-{widget_slug} button {{ background: {color}; }} "
+                f".st-key-overview-room-{widget_slug} button:hover {{ background: {color}; filter: brightness(0.96); }}</style>",
+                unsafe_allow_html=True,
+            )
             if st.button(
                 tile_label,
                 key=f"room-tile-{reading['room_name']}",

@@ -510,8 +510,8 @@ if not readings:
 
 room_names = sorted({str(reading["room_name"]) for reading in readings})
 query_room = st.query_params.get("room")
-page = st.session_state.get("view", st.query_params.get("view", "detail" if query_room else "overview"))
-selected_room = query_room or st.session_state.get("selected_room", room_names[0])
+page = pending_view or st.session_state.get("view", st.query_params.get("view", "detail" if query_room else "overview"))
+selected_room = pending_room or query_room or st.session_state.get("selected_room", room_names[0])
 if selected_room not in room_names:
     selected_room = room_names[0]
 st.session_state["selected_room"] = selected_room

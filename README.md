@@ -1,27 +1,50 @@
-# HomeClimate Dashboard
+# HomeClimate Dashboard v0.3
 
-A local Python control center for monitoring and understanding your home's heating system.
+HomeClimate Dashboard is a local Streamlit app for monitoring a Homematic IP heating system. It reads room temperatures, target temperatures, humidity, and underfloor-heating valve positions from a Homematic IP Access Point such as the HmIP-HAP2.
 
-HomeClimate Dashboard collects data from a Homematic IP Access Point, with a focus on underfloor heating. It is designed for long-term storage and historical analysis, with enough room to keep at least 12 months of heating data. The architecture is also prepared for a future Viessmann heat pump integration.
+The app is read-only with respect to heating settings. It reports target temperatures but never writes them back to Homematic IP.
 
-HomeDash v0.2 uses Homematic IP when a local `config.ini` is present and falls back to deterministic mock readings otherwise. It provides a room overview, room detail pages, historical charts, event logging, and a local archive of Homematic state. Mock mode is still available with `HOMEDASH_PROVIDER=mock`.
+## Current Features
 
-## What it does
+- Live Homematic IP room readings
+- Mock provider for development without hardware
+- Room overview grouped by `Obergeschoss` and `Erdgeschoss`
+- Compact room tiles with:
+  - Current temperature
+  - Humidity
+  - Target temperature
+  - Valve thermometer
+  - Five-state temperature and humidity trend arrows
+- Room detail view with historical charts and event log
+- Compact charts for all rooms
+- Graph scale defaults:
+  - Temperature: `10-30 C`
+  - Humidity and valve position: `0-100%`
+  - Optional `Fit data` mode
+- Homematic device and channel hierarchy in `Einstellungen`
+- Local or trusted-network access through the dashboard launcher
+- SQLite history for room readings, events, target reports, and Homematic snapshots
 
-- **Live monitoring:** Display current and target room temperatures, humidity, and valve opening percentages.
-- **Local data storage:** Persist telemetry in a local SQLite database so you can build a heating history that lasts more than a year.
-- **Trend analysis:** Explore warm-up phases, room cooldown behavior, and valve activity with interactive Streamlit charts across days, weeks, months, and years.
+## Navigation
 
-## Tech stack
+The top navigation provides:
 
-- **Frontend:** Streamlit
-- **Backend:** Python 3, optimized for Apple Silicon and macOS
-- **APIs:** `homematicip` for the Homematic IP Cloud; `PyViCare` is planned for the future Viessmann integration
-- **Storage and analysis:** SQLite and JSON snapshots, with no external database server required
+- `Home`: room overview only
+- `Raumdetail`: selected room history, charts, and event log
+- `Alle Diagramme`: compact historical charts for all rooms
+- `Einstellungen`: reread Homematic devices and inspect the device/channel hierarchy
+- `Refresh`: fetch and archive current readings
 
-## Getting started
+Click a room tile from `Home` to open its detail view.
 
-### 1. Clone the repository and create an environment
+## Requirements
+
+- macOS or another Python 3 environment
+- Python 3.9 or newer
+- Homematic IP Access Point for live mode
+- A local Homematic IP auth configuration for live mode
+
+## Installation
 
 ```bash
 git clone https://github.com/dbi66/HomeDash.git
@@ -31,132 +54,151 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Authenticate with Homematic IP
+## Homematic IP Authentication
 
-Generate an auth token for local access to your Access Point:
+Generate a local auth configuration:
 
 ```bash
 hmip_generate_auth_token
 ```
 
-The script asks for the Access Point's SGTIN. When prompted, press the blue system button on the physical device. The generated configuration is stored locally.
+Enter the Access Point SGTIN and press the blue system button on the physical Access Point when requested. The command creates `config.ini` locally.
 
-### 3. Initialize the database and start the app
+`config.ini` contains credentials and is ignored by Git. Do not share or commit it.
+
+## Start Locally
+
+Initialize the database and start Streamlit:
 
 ```bash
 python scripts/init_db.py
 streamlit run app.py
 ```
 
-The database is kept at `data/heating_data.db` and is never recreated by initialization. You can use another path with `HOMEDASH_DATABASE=/path/to/heating_data.db`. Create a consistent backup before maintenance or upgrades:
+Open:
 
-```bash
-python scripts/backup_database.py
+```text
+http://localhost:8501
 ```
 
-Backups are written to `data/backups/`, which is intentionally excluded from Git. An explicit backup path is also supported:
-
-```bash
-python scripts/backup_database.py --output /path/to/heating_data-backup.db
-```
-
-The dashboard starts at `http://localhost:8501`. With Homematic IP configured, use **Refresh readings** to fetch the latest room data from the cloud and store it locally. To run without hardware, use:
+Run without Homematic hardware:
 
 ```bash
 HOMEDASH_PROVIDER=mock streamlit run app.py
 ```
 
-### Remote access
+## Trusted Network Access
 
-The default server is local-only. To make the dashboard reachable from another device on a trusted home network or VPN:
+The default launcher binds to localhost. To access the dashboard from another device on the same trusted network or VPN:
 
 ```bash
 HOMEDASH_BIND=0.0.0.0 HOMEDASH_PORT=8501 sh scripts/run_dashboard.sh
 ```
 
-Find the Mac's LAN address with `ipconfig getifaddr en0`, then open `http://<mac-address>:8501` on the other device. The launcher does not add authentication or HTTPS, so do not expose this server directly to the public internet.
-
-The room cards automatically switch to a compact two-column layout on narrow iPhone-sized screens. Tap any room tile to select it and load that room's historical charts.
-
-Keep `config.ini` local. It contains the Homematic IP auth token and is excluded from Git.
-
-To inspect the data exposed by the Homematic system without printing credentials, run:
+Find the Mac's active address:
 
 ```bash
-python scripts/inspect_homematic.py
+ifconfig | awk '/inet / && $2 != "127.0.0.1" {print $2}'
 ```
 
-To archive the current state of every available Homematic device, functional channel, and group:
+Then open:
+
+```text
+http://<mac-address>:8501
+```
+
+The launcher provides no authentication and no HTTPS. Never expose this development server directly to the public internet.
+
+## Data Collection
+
+Collect one complete Homematic state snapshot:
 
 ```bash
 python scripts/collect_snapshot.py
 ```
 
-For continuous collection every five minutes:
+Collect room readings continuously and limit full Homematic snapshots to one every 30 minutes:
 
 ```bash
 python scripts/collect_snapshot.py --interval 300
 ```
 
-Full Homematic snapshots are deduplicated and limited to one every 30 minutes by default. Change that interval explicitly when needed:
+Change the full snapshot interval:
 
 ```bash
 python scripts/collect_snapshot.py --interval 300 --snapshot-interval 60
 ```
 
-Snapshots are stored in the local `homematic_snapshots` SQLite table as JSON values. The HmIP cloud does not expose a historical backfill endpoint through the installed API, so historical coverage starts when collection begins.
+Inspect available Homematic devices and channels without printing credentials:
 
-The dashboard uses German room labels. `Kitchen` and `Küche` are displayed as `Küche`; `Living Room` and `Wohnzimmer` are displayed as `Wohnzimmer`. Rooms are grouped from the two FALMOT floor-heating controllers: `... - oben` becomes `Obergeschoss`, and `... - unten` becomes `Erdgeschoss`. Manual assignments override controller inference: `Esszimmer` is upstairs and `Vorratsraum` is on the ground floor. Rooms without a confirmed assignment, including `Schlafzimmer`, appear under `Nicht zugeordnet`.
+```bash
+python scripts/inspect_homematic.py
+```
 
-The Home view shows the room overview only. Select a room to open its detail view with controls, history, and an event log. The detail charts use 10-30 C as the default temperature scale and 0-100% for humidity and valve values; **Fit data** is available when the fixed range is not useful. Valve openings and target-temperature changes are recorded as room events.
+## Database Safety
 
-Room tiles show five-state trends beside temperature and humidity: `↑` strong increase, `↗` slight increase, `→` no meaningful change, `↘` slight decrease, and `↓` strong decrease. Temperature uses `0.1/0.5 C` thresholds; humidity uses `1/5` percentage-point thresholds.
+The active database is:
 
-Open **Einstellungen** in the dashboard to reread the current Homematic IP devices. **Geraetehierarchie anzeigen** shows a graphical Home -> device -> channel tree with compact device cards and channel chips.
+```text
+data/heating_data.db
+```
 
-The selected room reports its current target temperature in the room card and history charts. HomeDash does not write target temperatures or other heating settings back to Homematic IP.
+`python scripts/init_db.py` creates missing tables and applies small migrations. It does not delete, replace, or reset the existing database.
 
-Use **Alle Diagramme** to open a compact overview of the historical temperature charts for every room. The selected time range applies to all rooms.
+Create a consistent SQLite backup before maintenance:
 
-## Project structure
+```bash
+python scripts/backup_database.py
+```
+
+Backups are written to `data/backups/`, which is ignored by Git. Use an explicit location when needed:
+
+```bash
+python scripts/backup_database.py --output /path/to/heating_data-backup.db
+```
+
+To use a different database path without changing source code:
+
+```bash
+HOMEDASH_DATABASE=/path/to/heating_data.db streamlit run app.py
+```
+
+## Database Tables
+
+- `room_readings`: normalized room time series used by the dashboard
+- `homematic_snapshots`: deduplicated device, channel, and group snapshots stored as JSON
+- `room_events`: valve opening/closing and externally observed target-temperature changes
+- `target_changes`: retained for compatibility with earlier versions; the current app does not write target temperatures
+
+## Project Structure
 
 ```text
 HomeDash/
-|-- app.py                 # Main Streamlit dashboard
+|-- app.py
 |-- data/
-|   `-- heating_data.db    # Locally generated SQLite database
+|   `-- heating_data.db
 |-- src/
-|   |-- config.py          # Central runtime and database paths
-|   |-- database.py        # SQLite read and write operations
-|   |-- hmip_provider.py   # Homematic IP connection and room mapping
-|   |-- history.py         # Full Homematic snapshot archive
-|   |-- mock_provider.py   # Deterministic room readings for development
-|   |-- models.py          # Shared room reading model
-|   |-- room_layout.py      # Building-level room assignments
-|   `-- __init__.py
+|   |-- config.py
+|   |-- database.py
+|   |-- history.py
+|   |-- hmip_provider.py
+|   |-- mock_provider.py
+|   |-- models.py
+|   `-- room_layout.py
 |-- scripts/
-|   |-- backup_database.py # Consistent SQLite backup command
-|   |-- collect_snapshot.py # Historical snapshot collector
-|   |-- init_db.py         # Database initialization script
-|   |-- inspect_homematic.py # Homematic data inventory helper
-|   `-- run_dashboard.sh    # Local or LAN Streamlit launcher
-|-- requirements.txt       # Project dependencies
+|   |-- backup_database.py
+|   |-- collect_snapshot.py
+|   |-- init_db.py
+|   |-- inspect_homematic.py
+|   `-- run_dashboard.sh
+|-- requirements.txt
 `-- README.md
 ```
 
 ## Roadmap
 
-- [x] First end-to-end slice with mock readings, SQLite persistence, and Streamlit UI
-- [x] Connect the dashboard to Homematic IP through a real client
-- [x] Group dashboard rooms into Erdgeschoss and Obergeschoss sections
-- [x] Add a helper for inspecting available Homematic devices and data fields
-- [x] Archive full Homematic snapshots for future history and analysis
-- [x] Add a one-shot and interval-based data collector
-- [x] Add selectable historical temperature and valve charts
-- [x] Add a compact mobile dashboard layout
-- [x] Add a configurable local/LAN web server launcher
-- [ ] Map the remaining rooms to their building levels
-- [ ] Run the collector automatically through a macOS LaunchDaemon
-- [ ] Integrate the Viessmann API through PyViCare to track flow temperature, return temperature, and compressor status for the Vitocal 250-A
-- [ ] Analyze correlations, such as how an open kitchen heating circuit affects the heat pump's flow temperature
-- [ ] Extend the architecture to support more Homematic IP sensors and actuators
+- Automatic macOS LaunchDaemon setup for the collector
+- More complete room-level assignments
+- Dew-point and temperature/humidity risk analysis
+- Longer-term aggregation and retention policies
+- Viessmann heat-pump integration

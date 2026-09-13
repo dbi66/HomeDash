@@ -464,7 +464,7 @@ def render_overview() -> None:
             valve = float(reading["valve_position"])
             label = (
                 f"**{room_name}**\n\n"
-                f"{float(reading['current_temperature']):.1f} C  |  Humidity {float(reading['humidity']):.0f}%\n\n"
+                f"{float(reading['current_temperature']):.1f} C  |  {float(reading['humidity']):.0f}%\n\n"
                 f"Target {float(reading['target_temperature']):.1f} C  |  Valve {valve_meter(valve)} {valve:.0f}%"
             )
             with columns[index % len(columns)]:

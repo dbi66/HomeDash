@@ -282,6 +282,7 @@ def render_history(room_name: str) -> None:
     history_frame["recorded_at"] = pd.to_datetime(history_frame["recorded_at"], utc=True)
     history_frame = history_frame.set_index("recorded_at")
     time_axis = alt.Axis(format="%H:%M", title=None)
+    mark_points = len(history_frame) <= 72
     chart_columns = st.columns(2)
     with chart_columns[0]:
         temperature_data = history_frame.reset_index().melt(
@@ -290,7 +291,14 @@ def render_history(room_name: str) -> None:
             var_name="series",
             value_name="temperature",
         )
-        temperature_chart = alt.Chart(temperature_data).mark_line().encode(
+        temperature_chart = alt.Chart(temperature_data)
+        if mark_points:
+            temperature_chart = temperature_chart.mark_line(
+                point=alt.OverlayMarkDef(size=18, filled=True)
+            )
+        else:
+            temperature_chart = temperature_chart.mark_line()
+        temperature_chart = temperature_chart.encode(
             x=alt.X("recorded_at:T", axis=time_axis),
             y=alt.Y("temperature:Q", title="Temperature (C)"),
             color=alt.Color("series:N", title=None),
@@ -308,7 +316,14 @@ def render_history(room_name: str) -> None:
             var_name="series",
             value_name="percent",
         )
-        percent_chart = alt.Chart(percent_data).mark_line().encode(
+        percent_chart = alt.Chart(percent_data)
+        if mark_points:
+            percent_chart = percent_chart.mark_line(
+                point=alt.OverlayMarkDef(size=18, filled=True)
+            )
+        else:
+            percent_chart = percent_chart.mark_line()
+        percent_chart = percent_chart.encode(
             x=alt.X("recorded_at:T", axis=time_axis),
             y=alt.Y("percent:Q", title="Percent"),
             color=alt.Color("series:N", title=None),

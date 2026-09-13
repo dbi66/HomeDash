@@ -321,9 +321,15 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-if st.button("Einstellungen"):
-    st.session_state["show_settings"] = not st.session_state.get("show_settings", False)
-    st.rerun()
+top_actions = st.columns(2)
+with top_actions[0]:
+    if st.button("Einstellungen", width="stretch"):
+        st.session_state["show_settings"] = not st.session_state.get("show_settings", False)
+        st.rerun()
+with top_actions[1]:
+    if st.button("Alle Diagramme", type="primary", width="stretch"):
+        st.session_state["show_all_graphs"] = not st.session_state.get("show_all_graphs", False)
+        st.rerun()
 
 if st.session_state.get("show_settings", False):
     with st.container(border=True):
@@ -518,10 +524,6 @@ with st.container(border=True):
     if PROVIDER != "homematic":
         st.caption("Target control is disabled in mock mode.")
     render_history(selected_room)
-
-if st.button("Alle Diagramme"):
-    st.session_state["show_all_graphs"] = not st.session_state.get("show_all_graphs", False)
-    st.rerun()
 
 if st.session_state.get("show_all_graphs", False):
     with st.container(border=True):

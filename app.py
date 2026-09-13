@@ -203,6 +203,61 @@ st.markdown(
                 font-size: 0.78rem;
                 line-height: 1.35;
             }
+
+                .device-tree {
+                    background: #eef5fb;
+                    border: 1px solid #c9d8e6;
+                    border-radius: 10px;
+                    margin-top: 0.75rem;
+                    padding: 1rem;
+                }
+
+                .device-tree__root {
+                    align-items: center;
+                    background: #102a43;
+                    border-radius: 8px;
+                    color: #ffffff;
+                    display: flex;
+                    font-weight: 700;
+                    gap: 0.6rem;
+                    padding: 0.7rem 0.85rem;
+                }
+
+                .device-tree__branch {
+                    border-left: 2px solid #9fb3c8;
+                    margin: 0.5rem 0 0 0.9rem;
+                    padding-left: 1rem;
+                }
+
+                .device-node {
+                    background: #ffffff;
+                    border: 1px solid #d9e2ec;
+                    border-radius: 8px;
+                    margin: 0.55rem 0;
+                    padding: 0.7rem;
+                }
+
+                .device-node__title {
+                    color: #102a43;
+                    font-size: 0.9rem;
+                    font-weight: 700;
+                }
+
+                .device-node__model {
+                    color: #627d98;
+                    font-size: 0.75rem;
+                    margin-left: 0.35rem;
+                }
+
+                .channel-chip {
+                    background: #dbeafe;
+                    border-radius: 999px;
+                    color: #243b53;
+                    display: inline-block;
+                    font-size: 0.7rem;
+                    margin: 0.45rem 0.35rem 0 0;
+                    padding: 0.25rem 0.5rem;
+                }
     </style>
     """,
     unsafe_allow_html=True,
@@ -231,23 +286,34 @@ def render_device_hierarchy(home: object) -> None:
         getattr(home, "devices", []),
         key=lambda device: str(getattr(device, "label", "")).lower(),
     )
-    st.caption(f"{len(devices)} Homematic devices")
+    nodes = []
     for device in devices:
         label = str(getattr(device, "label", "Unnamed device"))
         model = str(getattr(device, "modelType", "Unknown model"))
-        with st.expander(f"{label}  |  {model}"):
-            channels = getattr(device, "functionalChannels", [])
-            if not channels:
-                st.caption("No functional channels reported.")
-                continue
-            for channel in sorted(channels, key=lambda item: int(getattr(item, "index", 0))):
-                channel_type = str(getattr(channel, "functionalChannelType", "Unknown channel"))
-                channel_label = str(getattr(channel, "label", ""))
-                channel_index = getattr(channel, "index", "?")
-                title = f"Channel {channel_index}: {channel_type}"
-                if channel_label:
-                    title = f"{title}  |  {channel_label}"
-                st.write(title)
+        channels = sorted(
+            getattr(device, "functionalChannels", []),
+            key=lambda item: int(getattr(item, "index", 0)),
+        )
+        chips = []
+        for channel in channels:
+            channel_type = escape(str(getattr(channel, "functionalChannelType", "Unknown channel")))
+            channel_label = escape(str(getattr(channel, "label", "")))
+            channel_index = escape(str(getattr(channel, "index", "?")))
+            title = f"{channel_index}: {channel_type}"
+            if channel_label:
+                title = f"{title} | {channel_label}"
+            chips.append(f'<span class="channel-chip">{title}</span>')
+        channel_html = "".join(chips) or '<span class="channel-chip">No channels</span>'
+        nodes.append(
+            f'<div class="device-node"><div class="device-node__title">{escape(label)}'
+            f'<span class="device-node__model">{escape(model)}</span></div>{channel_html}</div>'
+        )
+    tree = (
+        f'<div class="device-tree"><div class="device-tree__root">HomeClimate'
+        f'<span class="device-tree__model">{len(devices)} devices</span></div>'
+        f'<div class="device-tree__branch">{"".join(nodes)}</div></div>'
+    )
+    st.markdown(tree, unsafe_allow_html=True)
 
 
 st.markdown(
@@ -270,6 +336,11 @@ if st.session_state.get("show_settings", False):
                 st.error(str(error))
 
         if st.button("Geraetehierarchie anzeigen"):
+            if st.session_state.get("device_home") is None:
+                try:
+                    st.session_state["device_home"] = load_home()
+                except HomematicProviderError as error:
+                    st.error(str(error))
             st.session_state["show_device_hierarchy"] = not st.session_state.get(
                 "show_device_hierarchy", False
             )

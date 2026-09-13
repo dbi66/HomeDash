@@ -570,6 +570,7 @@ def render_overview() -> None:
 
 def render_overview_graphs() -> None:
     st.markdown('<div class="level-heading">Alle Diagramme</div>', unsafe_allow_html=True)
+    render_chart_legend()
     hours = st.selectbox(
         "History range",
         options=(24, 168, 720),
@@ -582,14 +583,7 @@ def render_overview_graphs() -> None:
         if len(history) < 2:
             continue
         with graph_columns[index % 2]:
-            render_climate_chart(pd.DataFrame(history), room_name, 150, "Fixed range")
-
-
-if page == "overview":
-    if st.session_state.get("show_all_graphs", False):
-        render_overview_graphs()
-    render_overview()
-    st.stop()
+            render_climate_chart(pd.DataFrame(history), room_name, 180, "Fixed range")
 
 
 def render_climate_chart(
@@ -643,6 +637,19 @@ def render_climate_chart(
     st.altair_chart(chart, use_container_width=True)
 
 
+def render_chart_legend() -> None:
+    st.markdown(
+        '<div style="color:#486581;font-size:0.78rem;margin:0.35rem 0 0.75rem;">'
+        '<strong>Legende:</strong> '
+        '<span style="color:#0b7285">&#9644; IST-Temperatur</span> &nbsp; '
+        '<span style="color:#f08c00">- - Zieltemperatur</span> &nbsp; '
+        '<span style="color:#7c3aed">·· Feuchtigkeit</span> &nbsp; '
+        '<span style="color:#e03131">·· Ventil</span>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+
 def render_history(room_name: str) -> None:
     st.markdown(
         f'<div style="color:#102a43;font-size:1.35rem;font-weight:750;margin:0.5rem 0 0.25rem;">History: {escape(room_name)}</div>',
@@ -664,6 +671,7 @@ def render_history(room_name: str) -> None:
         st.info("Not enough snapshots for a trend yet. Keep the collector running to build history.")
         return
 
+    render_chart_legend()
     history_frame = pd.DataFrame(history)
     render_climate_chart(history_frame, room_name, 360, scale_mode)
 
@@ -673,37 +681,14 @@ def render_compact_chart(room_name: str, hours: int) -> None:
     if len(history) < 2:
         st.caption(f"{room_name}: not enough data")
         return
-    frame = pd.DataFrame(history)
-    frame["recorded_at"] = pd.to_datetime(frame["recorded_at"], utc=True)
-    frame = frame.set_index("recorded_at").reset_index().melt(
-        id_vars="recorded_at",
-        value_vars=["current_temperature", "target_temperature"],
-        var_name="series",
-        value_name="value",
-    )
-    chart = alt.Chart(frame).mark_line().encode(
-        x=alt.X("recorded_at:T", axis=alt.Axis(format="%H:%M", title=None)),
-        y=alt.Y("value:Q", title="C", scale=alt.Scale(domain=[10, 30])),
-        color=alt.Color("series:N", title=None),
-        tooltip=[alt.Tooltip("recorded_at:T", format="%H:%M"), "series:N", alt.Tooltip("value:Q", format=".1f")],
-    ).properties(height=150, title=room_name)
-    labels = (
-        alt.Chart(frame)
-        .transform_window(
-            rank="rank()",
-            sort=[alt.SortField("recorded_at", order="descending")],
-            groupby=["series"],
-        )
-        .transform_filter(alt.datum.rank == 1)
-        .mark_text(align="left", dx=5, fontSize=10)
-        .encode(
-            x="recorded_at:T",
-            y="value:Q",
-            text=alt.Text("value:Q", format=".1f"),
-            color=alt.Color("series:N", title=None),
-        )
-    )
-    st.altair_chart(chart + labels, use_container_width=True)
+    render_climate_chart(pd.DataFrame(history), room_name, 180, "Fixed range")
+
+
+if page == "overview":
+    if st.session_state.get("show_all_graphs", False):
+        render_overview_graphs()
+    render_overview()
+    st.stop()
 
 
 with st.container(border=True):

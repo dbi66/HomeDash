@@ -20,6 +20,13 @@ CREATE TABLE IF NOT EXISTS room_readings (
 );
 CREATE INDEX IF NOT EXISTS idx_room_readings_room_time
     ON room_readings (room_name, recorded_at DESC);
+CREATE TABLE IF NOT EXISTS target_changes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    room_name TEXT NOT NULL,
+    target_temperature REAL NOT NULL,
+    changed_at TEXT NOT NULL,
+    source TEXT NOT NULL
+);
 """
 
 
@@ -125,3 +132,17 @@ def get_room_history(
             (room_name, cutoff.isoformat()),
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+def record_target_change(
+    database_path: Union[str, Path],
+    room_name: str,
+    target_temperature: float,
+    source: str = "dashboard",
+) -> None:
+    initialize_database(database_path)
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            "INSERT INTO target_changes (room_name, target_temperature, changed_at, source) VALUES (?, ?, datetime('now'), ?)",
+            (room_name, target_temperature, source),
+        )

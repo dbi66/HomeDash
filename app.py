@@ -6,9 +6,9 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from src.database import get_latest_readings, get_room_history, save_readings
+from src.database import get_latest_readings, get_room_history, record_target_change, save_readings
 from src.history import save_home_snapshot
-from src.hmip_provider import CONFIG_PATH, HomematicProviderError, load_home, get_room_readings as get_hmip_readings, map_room_readings
+from src.hmip_provider import CONFIG_PATH, HomematicProviderError, load_home, get_room_readings as get_hmip_readings, map_room_readings, set_room_target_temperature
 from src.mock_provider import get_room_readings
 from src.room_layout import BASE_LEVEL, UNASSIGNED, UPSTAIRS, group_readings_by_level
 
@@ -458,6 +458,28 @@ def render_history(room_name: str) -> None:
         st.altair_chart(percent_chart, use_container_width=True)
 
 
+def render_compact_chart(room_name: str, hours: int) -> None:
+    history = get_room_history(DATABASE_PATH, room_name, hours)
+    if len(history) < 2:
+        st.caption(f"{room_name}: not enough data")
+        return
+    frame = pd.DataFrame(history)
+    frame["recorded_at"] = pd.to_datetime(frame["recorded_at"], utc=True)
+    frame = frame.set_index("recorded_at").reset_index().melt(
+        id_vars="recorded_at",
+        value_vars=["current_temperature", "target_temperature"],
+        var_name="series",
+        value_name="value",
+    )
+    chart = alt.Chart(frame).mark_line().encode(
+        x=alt.X("recorded_at:T", axis=alt.Axis(format="%H:%M", title=None)),
+        y=alt.Y("value:Q", title="C"),
+        color=alt.Color("series:N", title=None),
+        tooltip=[alt.Tooltip("recorded_at:T", format="%H:%M"), "series:N", alt.Tooltip("value:Q", format=".1f")],
+    ).properties(height=150, title=room_name)
+    st.altair_chart(chart, use_container_width=True)
+
+
 with st.container(border=True):
     history_room = st.selectbox("Selected room", room_names, index=room_names.index(selected_room))
     if history_room != selected_room:
@@ -467,7 +489,53 @@ with st.container(border=True):
         st.rerun()
     else:
         st.query_params["room"] = selected_room
+    selected_reading = next(reading for reading in readings if reading["room_name"] == selected_room)
+    control_columns = st.columns([1, 1, 2])
+    with control_columns[0]:
+        target_value = st.number_input(
+            "Target C",
+            min_value=5.0,
+            max_value=35.0,
+            step=0.5,
+            value=float(selected_reading["target_temperature"]),
+            key=f"target-value-{selected_room}",
+        )
+    with control_columns[1]:
+        confirm_target = st.checkbox("Confirm change", key=f"confirm-target-{selected_room}")
+    with control_columns[2]:
+        if st.button("Set target temperature", disabled=PROVIDER != "homematic"):
+            if not confirm_target:
+                st.warning("Confirm the target change first.")
+            else:
+                try:
+                    home = load_home()
+                    set_room_target_temperature(home, selected_room, target_value)
+                    record_target_change(DATABASE_PATH, selected_room, target_value)
+                    st.success(f"Target for {selected_room} set to {target_value:.1f} C.")
+                    st.session_state[f"confirm-target-{selected_room}"] = False
+                except HomematicProviderError as error:
+                    st.error(str(error))
+    if PROVIDER != "homematic":
+        st.caption("Target control is disabled in mock mode.")
     render_history(selected_room)
+
+if st.button("Alle Diagramme"):
+    st.session_state["show_all_graphs"] = not st.session_state.get("show_all_graphs", False)
+    st.rerun()
+
+if st.session_state.get("show_all_graphs", False):
+    with st.container(border=True):
+        st.markdown("### Alle Diagramme")
+        all_graph_hours = st.selectbox(
+            "History range for all rooms",
+            options=(24, 168, 720),
+            format_func=lambda hours: {24: "Last 24 hours", 168: "Last 7 days", 720: "Last 30 days"}[hours],
+            key="all-graphs-window",
+        )
+        graph_columns = st.columns(2)
+        for index, room_name in enumerate(room_names):
+            with graph_columns[index % 2]:
+                render_compact_chart(room_name, all_graph_hours)
 
 def valve_color(valve_position: float) -> str:
     if valve_position <= 0:

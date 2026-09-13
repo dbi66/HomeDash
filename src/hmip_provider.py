@@ -130,3 +130,33 @@ def get_room_readings(config_path: Union[str, Path] = CONFIG_PATH) -> list[RoomR
     if not readings:
         raise HomematicProviderError("No room temperature devices were found")
     return readings
+
+
+def set_room_target_temperature(
+    home: Home,
+    room_name: str,
+    temperature: float,
+) -> object:
+    if not 5.0 <= temperature <= 35.0:
+        raise HomematicProviderError("Target temperature must be between 5.0 C and 35.0 C")
+
+    canonical_name = canonical_room_name(room_name)
+    candidates = [
+        group
+        for group in home.groups
+        if getattr(group, "groupType", None) == "HEATING"
+        and canonical_room_name(getattr(group, "label", "")) == canonical_name
+    ]
+    if not candidates:
+        raise HomematicProviderError(f"No Homematic heating group found for {canonical_name}")
+
+    group = candidates[0]
+    if getattr(group, "controllable", True) is False:
+        raise HomematicProviderError(f"{canonical_name} is not controllable")
+    setter = getattr(group, "set_point_temperature", None)
+    if setter is None:
+        raise HomematicProviderError(f"{canonical_name} does not support target changes")
+    response = setter(round(temperature, 1))
+    if isinstance(response, dict) and response.get("errorCode"):
+        raise HomematicProviderError(f"Homematic rejected the target change: {response['errorCode']}")
+    return response

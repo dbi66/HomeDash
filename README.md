@@ -86,6 +86,12 @@ For continuous collection every five minutes:
 python scripts/collect_snapshot.py --interval 300
 ```
 
+Full Homematic snapshots are deduplicated and limited to one every 30 minutes by default. Change that interval explicitly when needed:
+
+```bash
+python scripts/collect_snapshot.py --interval 300 --snapshot-interval 60
+```
+
 Snapshots are stored in the local `homematic_snapshots` SQLite table as JSON values. The HmIP cloud does not expose a historical backfill endpoint through the installed API, so historical coverage starts when collection begins.
 
 The dashboard uses German room labels. `Kitchen` and `Küche` are displayed as `Küche`; `Living Room` and `Wohnzimmer` are displayed as `Wohnzimmer`. Rooms are grouped from the two FALMOT floor-heating controllers: `... - oben` becomes `Obergeschoss`, and `... - unten` becomes `Erdgeschoss`. Manual assignments override controller inference: `Esszimmer` is upstairs and `Vorratsraum` is on the ground floor. Rooms without a confirmed assignment, including `Schlafzimmer`, appear under `Nicht zugeordnet`.

@@ -16,12 +16,17 @@ from src.hmip_provider import HomematicProviderError, load_home, map_room_readin
 DATABASE_PATH = PROJECT_ROOT / "data" / "heating_data.db"
 
 
-def collect_once() -> tuple[int, int]:
+def collect_once(snapshot_interval_minutes: int) -> tuple[int, int]:
     home = load_home()
     recorded_at = datetime.now(timezone.utc)
     room_readings = map_room_readings(home)
     save_readings(DATABASE_PATH, room_readings)
-    snapshot_count = save_home_snapshot(DATABASE_PATH, home, recorded_at)
+    snapshot_count = save_home_snapshot(
+        DATABASE_PATH,
+        home,
+        recorded_at,
+        min_interval_minutes=snapshot_interval_minutes,
+    )
     return len(room_readings), snapshot_count
 
 
@@ -33,11 +38,17 @@ def main() -> int:
         default=0,
         help="Repeat every N seconds. Omit to collect one snapshot and exit.",
     )
+    parser.add_argument(
+        "--snapshot-interval",
+        type=int,
+        default=30,
+        help="Minimum minutes between full Homematic snapshots.",
+    )
     arguments = parser.parse_args()
 
     while True:
         try:
-            room_count, snapshot_count = collect_once()
+            room_count, snapshot_count = collect_once(arguments.snapshot_interval)
             print(f"Collected {room_count} rooms and {snapshot_count} Homematic objects.")
         except HomematicProviderError as error:
             print(f"Collection failed: {error}")

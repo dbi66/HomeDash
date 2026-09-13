@@ -26,7 +26,7 @@ st.markdown(
         }
 
         .dashboard-header {
-            padding: 0.75rem 0 1rem;
+            padding: 0.35rem 0 0.5rem;
         }
 
         .dashboard-header h1 {
@@ -34,6 +34,20 @@ st.markdown(
             font-size: 2.1rem;
             letter-spacing: 0;
             margin-bottom: 0.25rem;
+        }
+
+        [class*="st-key-refresh-button"] button {
+            background: #ffffff;
+            border: 1px solid #bcccdc;
+            border-radius: 8px;
+            color: #102a43;
+            min-height: 42px !important;
+            padding: 0.45rem 0.8rem !important;
+        }
+
+        [class*="st-key-refresh-button"] button p {
+            font-size: 0.8rem;
+            font-weight: 700;
         }
 
         .dashboard-header p {
@@ -52,15 +66,15 @@ st.markdown(
             color: #102a43;
             font-size: 1.35rem;
             font-weight: 750;
-            margin: 1.75rem 0 0.25rem;
+            margin: 1rem 0 0.35rem;
         }
 
         .room-card {
             border: 1px solid rgba(16, 42, 67, 0.12);
             border-radius: 10px;
             box-shadow: 0 8px 20px rgba(16, 42, 67, 0.08);
-            min-height: 188px;
-            padding: 1.1rem;
+            min-height: 154px;
+            padding: 0.9rem;
         }
 
         .room-card__top,
@@ -347,7 +361,7 @@ with header_actions[0]:
         unsafe_allow_html=True,
     )
 with header_actions[1]:
-    if st.button("Refresh", help="Read current Homematic IP values", width="stretch"):
+    if st.button("Refresh", key="refresh-button", help="Read current Homematic IP values", width="stretch"):
         try:
             if PROVIDER == "homematic":
                 home = load_home()

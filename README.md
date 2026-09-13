@@ -100,7 +100,7 @@ The Home view shows the room overview only. Select a room to open its detail vie
 
 Open **Einstellungen** in the dashboard to reread the current Homematic IP devices. **Geraetehierarchie anzeigen** shows a graphical Home -> device -> channel tree with compact device cards and channel chips.
 
-The selected room also has guarded target-temperature control. In Homematic mode, enter a value between 5.0 C and 35.0 C, confirm the change, and choose **Set target temperature**. Changes are recorded in the local `target_changes` table. Mock mode keeps this control disabled.
+The selected room reports its current target temperature in the room card and history charts. HomeDash does not write target temperatures or other heating settings back to Homematic IP.
 
 Use **Alle Diagramme** to open a compact overview of the historical temperature charts for every room. The selected time range applies to all rooms.
 

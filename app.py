@@ -6,9 +6,9 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from src.database import get_latest_readings, get_room_events, get_room_history, record_target_change, save_readings
+from src.database import get_latest_readings, get_room_events, get_room_history, save_readings
 from src.history import save_home_snapshot
-from src.hmip_provider import CONFIG_PATH, HomematicProviderError, load_home, get_room_readings as get_hmip_readings, map_room_readings, set_room_target_temperature
+from src.hmip_provider import CONFIG_PATH, HomematicProviderError, load_home, get_room_readings as get_hmip_readings, map_room_readings
 from src.mock_provider import get_room_readings
 from src.room_layout import BASE_LEVEL, UNASSIGNED, UPSTAIRS, group_readings_by_level
 
@@ -601,34 +601,6 @@ with st.container(border=True):
         st.rerun()
     else:
         st.query_params["room"] = selected_room
-    selected_reading = next(reading for reading in readings if reading["room_name"] == selected_room)
-    control_columns = st.columns([1, 1, 2])
-    with control_columns[0]:
-        target_value = st.number_input(
-            "Target C",
-            min_value=5.0,
-            max_value=35.0,
-            step=0.5,
-            value=float(selected_reading["target_temperature"]),
-            key=f"target-value-{selected_room}",
-        )
-    with control_columns[1]:
-        confirm_target = st.checkbox("Confirm change", key=f"confirm-target-{selected_room}")
-    with control_columns[2]:
-        if st.button("Set target temperature", disabled=PROVIDER != "homematic"):
-            if not confirm_target:
-                st.warning("Confirm the target change first.")
-            else:
-                try:
-                    home = load_home()
-                    set_room_target_temperature(home, selected_room, target_value)
-                    record_target_change(DATABASE_PATH, selected_room, target_value)
-                    st.success(f"Target for {selected_room} set to {target_value:.1f} C.")
-                    st.session_state[f"confirm-target-{selected_room}"] = False
-                except HomematicProviderError as error:
-                    st.error(str(error))
-    if PROVIDER != "homematic":
-        st.caption("Target control is disabled in mock mode.")
     render_history(selected_room)
     with st.expander("Event log"):
         events = get_room_events(DATABASE_PATH, selected_room)

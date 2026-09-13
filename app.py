@@ -581,21 +581,8 @@ def render_overview_graphs() -> None:
         history = get_room_history(DATABASE_PATH, room_name, hours)
         if len(history) < 2:
             continue
-        frame = pd.DataFrame(history)
-        frame["recorded_at"] = pd.to_datetime(frame["recorded_at"], utc=True)
-        frame = frame.melt(
-            id_vars="recorded_at",
-            value_vars=["current_temperature", "target_temperature"],
-            var_name="series",
-            value_name="temperature",
-        )
-        chart = alt.Chart(frame).mark_line().encode(
-            x=alt.X("recorded_at:T", axis=alt.Axis(format="%H:%M", title=None)),
-            y=alt.Y("temperature:Q", title="C", scale=alt.Scale(domain=[10, 30])),
-            color=alt.Color("series:N", title=None),
-        ).properties(height=150, title=room_name)
         with graph_columns[index % 2]:
-            st.altair_chart(chart, use_container_width=True)
+            render_climate_chart(pd.DataFrame(history), room_name, 150, "Fixed range")
 
 
 if page == "overview":
@@ -603,6 +590,57 @@ if page == "overview":
         render_overview_graphs()
     render_overview()
     st.stop()
+
+
+def render_climate_chart(
+    history_frame: pd.DataFrame,
+    title: str,
+    height: int,
+    scale_mode: str,
+) -> None:
+    history_frame["recorded_at"] = pd.to_datetime(history_frame["recorded_at"], utc=True)
+    temperature_scale = alt.Scale(domain=[10, 30]) if scale_mode == "Fixed range" else alt.Scale(zero=False)
+    percent_scale = alt.Scale(domain=[0, 100]) if scale_mode == "Fixed range" else alt.Scale(zero=False)
+    time_axis = alt.Axis(format="%H:%M", title=None)
+    current = history_frame[["recorded_at", "current_temperature"]].rename(columns={"current_temperature": "value"})
+    target = history_frame[["recorded_at", "target_temperature"]].rename(columns={"target_temperature": "value"})
+    humidity = history_frame[["recorded_at", "humidity"]].rename(columns={"humidity": "value"})
+    valve = history_frame[["recorded_at", "valve_position"]].rename(columns={"valve_position": "value"})
+
+    def line(data: pd.DataFrame, color: str, dash=None, scale=None, points=False):
+        mark = {"color": color, "strokeWidth": 2}
+        if dash:
+            mark["strokeDash"] = dash
+        if points:
+            mark["point"] = {"size": 18, "filled": True}
+        return alt.Chart(data).mark_line(**mark).encode(
+            x=alt.X("recorded_at:T", axis=time_axis),
+            y=alt.Y("value:Q", scale=scale),
+        )
+
+    def endpoint_label(data: pd.DataFrame, color: str, fmt: str, scale=None):
+        return (
+            alt.Chart(data)
+            .transform_window(
+                rank="rank()",
+                sort=[alt.SortField("recorded_at", order="descending")],
+            )
+            .transform_filter(alt.datum.rank == 1)
+            .mark_text(align="left", dx=5, fontSize=10, color=color)
+            .encode(x="recorded_at:T", y=alt.Y("value:Q", scale=scale), text=alt.Text("value:Q", format=fmt))
+        )
+
+    chart = (
+        line(current, "#0b7285", scale=temperature_scale, points=len(history_frame) <= 72)
+        + line(target, "#f08c00", dash=[6, 3], scale=temperature_scale)
+        + line(humidity, "#7c3aed", dash=[2, 2], scale=percent_scale)
+        + line(valve, "#e03131", dash=[2, 2], scale=percent_scale)
+        + endpoint_label(current, "#0b7285", ".1f", temperature_scale)
+        + endpoint_label(target, "#f08c00", ".1f", temperature_scale)
+        + endpoint_label(humidity, "#7c3aed", ".0f", percent_scale)
+        + endpoint_label(valve, "#e03131", ".0f", percent_scale)
+    ).resolve_scale(y="independent").properties(height=height, title=title)
+    st.altair_chart(chart, use_container_width=True)
 
 
 def render_history(room_name: str) -> None:
@@ -627,117 +665,7 @@ def render_history(room_name: str) -> None:
         return
 
     history_frame = pd.DataFrame(history)
-    history_frame["recorded_at"] = pd.to_datetime(history_frame["recorded_at"], utc=True)
-    history_frame = history_frame.set_index("recorded_at")
-    time_axis = alt.Axis(format="%H:%M", title=None)
-    temperature_scale = alt.Scale(domain=[10, 30]) if scale_mode == "Fixed range" else alt.Scale(zero=False)
-    percent_scale = alt.Scale(domain=[0, 100]) if scale_mode == "Fixed range" else alt.Scale(zero=False)
-    mark_points = len(history_frame) <= 72
-    chart_columns = st.columns(2)
-    with chart_columns[0]:
-        temperature_data = history_frame.reset_index().melt(
-            id_vars="recorded_at",
-            value_vars=["current_temperature", "target_temperature"],
-            var_name="series",
-            value_name="temperature",
-        )
-        temperature_chart = alt.Chart(temperature_data)
-        if mark_points:
-            temperature_chart = temperature_chart.mark_line(
-                point=alt.OverlayMarkDef(size=18, filled=True)
-            )
-        else:
-            temperature_chart = temperature_chart.mark_line()
-        temperature_chart = temperature_chart.encode(
-            x=alt.X("recorded_at:T", axis=time_axis),
-            y=alt.Y("temperature:Q", title="Temperature (C)", scale=temperature_scale),
-            color=alt.Color("series:N", title=None),
-            tooltip=[
-                alt.Tooltip("recorded_at:T", title="Time", format="%H:%M"),
-                alt.Tooltip("series:N", title="Series"),
-                alt.Tooltip("temperature:Q", title="C", format=".1f"),
-            ],
-        ).properties(height=220)
-        percentage_data = history_frame.reset_index().melt(
-            id_vars="recorded_at",
-            value_vars=["humidity", "valve_position"],
-            var_name="series",
-            value_name="percent",
-        )
-        percentage_overlay = alt.Chart(percentage_data).mark_line(
-            strokeDash=[4, 3],
-            opacity=0.75,
-        ).encode(
-            x="recorded_at:T",
-            y=alt.Y("percent:Q", title="Percent", scale=percent_scale),
-            color=alt.Color("series:N", title=None),
-            tooltip=[
-                alt.Tooltip("recorded_at:T", title="Time", format="%H:%M"),
-                alt.Tooltip("series:N", title="Series"),
-                alt.Tooltip("percent:Q", title="%", format=".0f"),
-            ],
-        )
-        temperature_labels = (
-            alt.Chart(temperature_data)
-            .transform_window(
-                rank="rank()",
-                sort=[alt.SortField("recorded_at", order="descending")],
-                groupby=["series"],
-            )
-            .transform_filter(alt.datum.rank == 1)
-            .mark_text(align="left", dx=5, fontSize=11)
-            .encode(
-                x="recorded_at:T",
-                y="temperature:Q",
-                text=alt.Text("temperature:Q", format=".1f"),
-                color=alt.Color("series:N", title=None),
-            )
-        )
-        st.altair_chart(
-            (temperature_chart + temperature_labels + percentage_overlay).resolve_scale(y="independent"),
-            use_container_width=True,
-        )
-    with chart_columns[1]:
-        percent_data = history_frame.reset_index().melt(
-            id_vars="recorded_at",
-            value_vars=["valve_position", "humidity"],
-            var_name="series",
-            value_name="percent",
-        )
-        percent_chart = alt.Chart(percent_data)
-        if mark_points:
-            percent_chart = percent_chart.mark_line(
-                point=alt.OverlayMarkDef(size=18, filled=True)
-            )
-        else:
-            percent_chart = percent_chart.mark_line()
-        percent_chart = percent_chart.encode(
-            x=alt.X("recorded_at:T", axis=time_axis),
-            y=alt.Y("percent:Q", title="Percent", scale=percent_scale),
-            color=alt.Color("series:N", title=None),
-            tooltip=[
-                alt.Tooltip("recorded_at:T", title="Time", format="%H:%M"),
-                alt.Tooltip("series:N", title="Series"),
-                alt.Tooltip("percent:Q", title="%", format=".0f"),
-            ],
-        ).properties(height=220)
-        percent_labels = (
-            alt.Chart(percent_data)
-            .transform_window(
-                rank="rank()",
-                sort=[alt.SortField("recorded_at", order="descending")],
-                groupby=["series"],
-            )
-            .transform_filter(alt.datum.rank == 1)
-            .mark_text(align="left", dx=5, fontSize=11)
-            .encode(
-                x="recorded_at:T",
-                y="percent:Q",
-                text=alt.Text("percent:Q", format=".0f"),
-                color=alt.Color("series:N", title=None),
-            )
-        )
-        st.altair_chart(percent_chart + percent_labels, use_container_width=True)
+    render_climate_chart(history_frame, room_name, 360, scale_mode)
 
 
 def render_compact_chart(room_name: str, hours: int) -> None:

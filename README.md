@@ -118,6 +118,19 @@ sh scripts/run_development.sh
 
 The development profile never writes to the production database unless `HOMEDASH_DATABASE` is explicitly overridden.
 
+Create the initial development database as a consistent copy of production:
+
+```bash
+python scripts/clone_production_database.py
+sh scripts/run_development.sh
+```
+
+An existing development copy is protected by default. Replace it explicitly with:
+
+```bash
+python scripts/clone_production_database.py --force
+```
+
 Install production as a macOS LaunchAgent so it starts at login and restarts if it exits:
 
 ```bash

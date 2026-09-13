@@ -254,6 +254,11 @@ if not readings:
     st.warning("No room readings are available yet.")
     st.stop()
 
+room_names = sorted({str(reading["room_name"]) for reading in readings})
+selected_room = st.session_state.get("selected_room", room_names[0])
+if selected_room not in room_names:
+    selected_room = room_names[0]
+
 def valve_color(valve_position: float) -> str:
     if valve_position <= 0:
         return "#dbeafe"
@@ -270,13 +275,19 @@ def render_room_tiles(level_readings: list[dict[str, object]]) -> None:
         room_name = escape(str(reading["room_name"]))
         valve_position = float(reading["valve_position"])
         status = "Heating" if valve_position > 0 else "Idle"
+        selection = "Selected" if str(reading["room_name"]) == selected_room else status
         tile_label = (
             f"**{room_name}**\n\n"
             f"{float(reading['current_temperature']):.1f} C  |  Target {float(reading['target_temperature']):.1f} C\n\n"
-            f"Humidity {float(reading['humidity']):.0f}%  |  Valve {valve_position:.0f}%  |  {status}"
+            f"Humidity {float(reading['humidity']):.0f}%  |  Valve {valve_position:.0f}%  |  {selection}"
         )
         with columns[index % len(columns)]:
-            if st.button(tile_label, key=f"room-tile-{reading['room_name']}", width="stretch"):
+            if st.button(
+                tile_label,
+                key=f"room-tile-{reading['room_name']}",
+                width="stretch",
+                type="secondary",
+            ):
                 st.session_state["selected_room"] = str(reading["room_name"])
                 st.rerun()
 
@@ -307,13 +318,9 @@ with st.expander("Show latest readings table"):
     )
 
 st.markdown(
-    '<div style="color:#102a43;font-size:1.35rem;font-weight:750;margin:1.75rem 0 0.25rem;">History</div>',
+    f'<div style="color:#102a43;font-size:1.35rem;font-weight:750;margin:1.75rem 0 0.25rem;">History: {escape(selected_room)}</div>',
     unsafe_allow_html=True,
 )
-room_names = sorted({str(reading["room_name"]) for reading in readings})
-selected_room = st.session_state.get("selected_room", room_names[0])
-if selected_room not in room_names:
-    selected_room = room_names[0]
 history_room = st.selectbox("Selected room", room_names, index=room_names.index(selected_room))
 st.session_state["selected_room"] = history_room
 history_window = st.selectbox(

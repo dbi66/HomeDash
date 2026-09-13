@@ -460,6 +460,17 @@ def valve_meter(valve_position: float) -> str:
     return "[{}{}]".format("#" * filled, "-" * (10 - filled))
 
 
+def colored_trend(arrow: str) -> str:
+    colors = {
+        "↑": "red",
+        "↗": "orange",
+        "→": "gray",
+        "↘": "blue-background",
+        "↓": "blue",
+    }
+    return f':{colors.get(arrow, "gray")}[' + arrow + "]"
+
+
 def room_widget_slug(room_name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "-", room_name)
 
@@ -478,7 +489,7 @@ def render_overview() -> None:
             trends = get_room_trends(DATABASE_PATH, room_name)
             label = (
                 f"**{room_name}**\n\n"
-                f"{float(reading['current_temperature']):.1f} C {trends['temperature']}  |  {float(reading['humidity']):.0f}% {trends['humidity']}\n\n"
+                f"{float(reading['current_temperature']):.1f} C {colored_trend(trends['temperature'])}  |  {float(reading['humidity']):.0f}% {colored_trend(trends['humidity'])}\n\n"
                 f"Target {float(reading['target_temperature']):.1f} C  |  Valve {valve_meter(valve)} {valve:.0f}%"
             )
             with columns[index % len(columns)]:

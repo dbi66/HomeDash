@@ -14,7 +14,7 @@ The app is read-only with respect to heating settings. It reports target tempera
   - Humidity
   - Target temperature
   - Valve thermometer
-  - Five-state temperature and humidity trend arrows
+  - Five-state temperature and humidity trend arrows: red `↑`, orange `↗`, gray `→`, light-blue `↘`, and blue `↓`
 - Room detail view with historical charts and event log
 - Compact charts for all rooms
 - Graph scale defaults:

@@ -56,6 +56,14 @@ HOMEDASH_PROVIDER=mock streamlit run app.py
 
 Keep `config.ini` local. It contains the Homematic IP auth token and is excluded from Git.
 
+To inspect the data exposed by the Homematic system without printing credentials, run:
+
+```bash
+python scripts/inspect_homematic.py
+```
+
+The dashboard currently groups `Living Room` under `Upstairs` and `Arbeit Dennis` under `Base level`. Rooms without an explicit mapping appear under `Unassigned` until their level is confirmed.
+
 ## Project structure
 
 ```text
@@ -68,9 +76,11 @@ HomeDash/
 |   |-- hmip_provider.py   # Homematic IP connection and room mapping
 |   |-- mock_provider.py   # Deterministic room readings for development
 |   |-- models.py          # Shared room reading model
+|   |-- room_layout.py      # Building-level room assignments
 |   `-- __init__.py
 |-- scripts/
-|   `-- init_db.py         # Database initialization script
+|   |-- init_db.py         # Database initialization script
+|   `-- inspect_homematic.py # Homematic data inventory helper
 |-- requirements.txt       # Project dependencies
 `-- README.md
 ```
@@ -79,6 +89,9 @@ HomeDash/
 
 - [x] First end-to-end slice with mock readings, SQLite persistence, and Streamlit UI
 - [x] Connect the dashboard to Homematic IP through a real client
+- [x] Group dashboard rooms into base level and upstairs sections
+- [x] Add a helper for inspecting available Homematic devices and data fields
+- [ ] Map the remaining rooms to their building levels
 - [ ] Read heating components such as wall thermostats and underfloor heating controllers, then show them live
 - [ ] Add a data logger that writes values to SQLite every minute or hour, using a macOS LaunchDaemon or background loop
 - [ ] Add interactive historical views with Pandas DataFrames and Streamlit line charts

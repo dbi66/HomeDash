@@ -7,6 +7,7 @@ import streamlit as st
 from src.database import get_latest_readings, save_readings
 from src.hmip_provider import CONFIG_PATH, HomematicProviderError, get_room_readings as get_hmip_readings
 from src.mock_provider import get_room_readings
+from src.room_layout import BASE_LEVEL, UNASSIGNED, UPSTAIRS, group_readings_by_level
 
 
 DATABASE_PATH = Path(__file__).resolve().parent / "data" / "heating_data.db"
@@ -41,6 +42,13 @@ st.markdown(
             gap: 1rem;
             grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
             margin: 1.25rem 0 1.75rem;
+        }
+
+        .level-heading {
+            color: #102a43;
+            font-size: 1.35rem;
+            font-weight: 750;
+            margin: 1.75rem 0 0.25rem;
         }
 
         .room-card {
@@ -163,23 +171,34 @@ def valve_color(valve_position: float) -> str:
     return "rgb({}, {}, {})".format(*color)
 
 
-cards = []
-for reading in readings:
-    room_name = escape(str(reading["room_name"]))
-    valve_position = float(reading["valve_position"])
-    status = "Heating" if valve_position > 0 else "Idle"
-    cards.append(
-        f'<article class="room-card" style="background: {valve_color(valve_position)};">'
-        f'<div class="room-card__top"><span class="room-card__name">{room_name}</span>'
-        f'<span class="room-card__status">{status}</span></div>'
-        f'<div class="room-card__reading"><span class="room-card__temperature">'
-        f'{float(reading["current_temperature"]):.1f} C</span><span class="room-card__target">'
-        f'Target {float(reading["target_temperature"]):.1f} C</span></div>'
-        f'<div class="room-card__meta"><span>Humidity <strong>{float(reading["humidity"]):.0f}%</strong></span>'
-        f'<span>Valve <strong>{valve_position:.0f}%</strong></span></div></article>'
-    )
+def render_room_cards(level_readings: list[dict[str, object]]) -> None:
+    cards = []
+    for reading in level_readings:
+        room_name = escape(str(reading["room_name"]))
+        valve_position = float(reading["valve_position"])
+        status = "Heating" if valve_position > 0 else "Idle"
+        cards.append(
+            f'<article class="room-card" style="background: {valve_color(valve_position)};">'
+            f'<div class="room-card__top"><span class="room-card__name">{room_name}</span>'
+            f'<span class="room-card__status">{status}</span></div>'
+            f'<div class="room-card__reading"><span class="room-card__temperature">'
+            f'{float(reading["current_temperature"]):.1f} C</span><span class="room-card__target">'
+            f'Target {float(reading["target_temperature"]):.1f} C</span></div>'
+            f'<div class="room-card__meta"><span>Humidity <strong>{float(reading["humidity"]):.0f}%</strong></span>'
+            f'<span>Valve <strong>{valve_position:.0f}%</strong></span></div></article>'
+        )
+    st.markdown(f'<section class="room-grid">{"".join(cards)}</section>', unsafe_allow_html=True)
 
-st.markdown(f'<section class="room-grid">{"".join(cards)}</section>', unsafe_allow_html=True)
+
+grouped_readings = group_readings_by_level(readings)
+for level in (UPSTAIRS, BASE_LEVEL, UNASSIGNED):
+    level_readings = grouped_readings.get(level, [])
+    if level_readings:
+        st.markdown(
+            f'<div style="color:#102a43;font-size:1.35rem;font-weight:750;margin:1.75rem 0 0.25rem;">{escape(level)}</div>',
+            unsafe_allow_html=True,
+        )
+        render_room_cards(level_readings)
 
 with st.expander("Show latest readings table"):
     st.dataframe(

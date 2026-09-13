@@ -519,7 +519,7 @@ def colored_trend(arrow: str) -> str:
         "↑": "red",
         "↗": "orange",
         "→": "gray",
-        "↘": "blue-background",
+        "↘": "blue",
         "↓": "blue",
     }
     return f':{colors.get(arrow, "gray")}[' + arrow + "]"

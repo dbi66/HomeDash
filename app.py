@@ -395,7 +395,7 @@ with header_actions[1]:
             st.error(str(error))
 with header_actions[2]:
     route_hint = "Raumdetail" if st.query_params.get("view") == "detail" else "Home"
-    if route_hint == "Raumdetail" and st.session_state.get("function-navigation") != "Raumdetail":
+    if route_hint == "Raumdetail" and "function-navigation" not in st.session_state:
         st.session_state["function-navigation"] = "Raumdetail"
     if "navigation-last" not in st.session_state:
         st.session_state["navigation-last"] = route_hint

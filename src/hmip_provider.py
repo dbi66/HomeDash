@@ -6,6 +6,7 @@ from typing import Iterable, Optional, Union
 from homematicip.home import Home
 
 from src.models import RoomReading
+from src.room_layout import canonical_room_name
 
 
 CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.ini"
@@ -44,21 +45,20 @@ def _room_groups(home: Home) -> Iterable[object]:
 def map_room_readings(home: Home) -> list[RoomReading]:
     recorded_at = datetime.now(timezone.utc)
     readings: list[RoomReading] = []
-    seen_room_names: set[str] = set()
+    grouped_devices: dict[str, list[object]] = {}
 
     for group in _room_groups(home):
-        room_name = getattr(group, "label", None) or "Unnamed room"
-        if room_name in seen_room_names:
-            continue
-        seen_room_names.add(room_name)
+        room_name = canonical_room_name(getattr(group, "label", None) or "Unnamed room")
+        grouped_devices.setdefault(room_name, []).extend(getattr(group, "devices", []))
 
+    for room_name, devices in grouped_devices.items():
         temperatures: list[float] = []
         targets: list[float] = []
         humidities: list[float] = []
         valves: list[float] = []
         seen_devices: set[str] = set()
 
-        for device in getattr(group, "devices", []):
+        for device in devices:
             device_id = str(getattr(device, "id", id(device)))
             if device_id in seen_devices:
                 continue

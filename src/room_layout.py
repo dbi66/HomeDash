@@ -11,10 +11,19 @@ ROOM_LEVELS = {
     "Living Room": UPSTAIRS,
 }
 
+ROOM_ALIASES = {
+    "Küche": "Kitchen",
+    "Wohnzimmer": "Living Room",
+}
+
+
+def canonical_room_name(room_name: str) -> str:
+    return ROOM_ALIASES.get(room_name.strip(), room_name.strip())
+
 
 def group_readings_by_level(readings: Iterable[dict[str, object]]) -> dict[str, list[dict[str, object]]]:
     grouped: dict[str, list[dict[str, object]]] = defaultdict(list)
     for reading in readings:
-        room_name = str(reading["room_name"])
+        room_name = canonical_room_name(str(reading["room_name"]))
         grouped[ROOM_LEVELS.get(room_name, UNASSIGNED)].append(reading)
     return dict(grouped)

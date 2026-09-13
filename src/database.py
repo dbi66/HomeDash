@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Union
 
 from src.models import RoomReading
+from src.room_layout import ROOM_ALIASES
 
 
 SCHEMA = """
@@ -25,6 +26,11 @@ def initialize_database(database_path: Union[str, Path]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(path) as connection:
         connection.executescript(SCHEMA)
+        for alias, canonical_name in ROOM_ALIASES.items():
+            connection.execute(
+                "UPDATE room_readings SET room_name = ? WHERE room_name = ?",
+                (canonical_name, alias),
+            )
 
 
 def save_readings(database_path: Union[str, Path], readings: list[RoomReading]) -> None:

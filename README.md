@@ -62,7 +62,7 @@ To inspect the data exposed by the Homematic system without printing credentials
 python scripts/inspect_homematic.py
 ```
 
-The dashboard currently groups `Living Room` under `Upstairs` and `Arbeit Dennis` under `Base level`. Rooms without an explicit mapping appear under `Unassigned` until their level is confirmed.
+The dashboard currently groups `Living Room` under `Upstairs` and `Arbeit Dennis` under `Base level`. The aliases `Wohnzimmer` -> `Living Room` and `Küche` -> `Kitchen` are merged automatically. Rooms without an explicit mapping appear under `Unassigned` until their level is confirmed.
 
 ## Project structure
 

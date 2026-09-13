@@ -90,6 +90,8 @@ Snapshots are stored in the local `homematic_snapshots` SQLite table as JSON val
 
 The dashboard uses German room labels. `Kitchen` and `Küche` are displayed as `Küche`; `Living Room` and `Wohnzimmer` are displayed as `Wohnzimmer`. Rooms are grouped from the two FALMOT floor-heating controllers: `... - oben` becomes `Obergeschoss`, and `... - unten` becomes `Erdgeschoss`. Manual assignments override controller inference: `Esszimmer` is upstairs and `Vorratsraum` is on the ground floor. Rooms without a confirmed assignment, including `Schlafzimmer`, appear under `Nicht zugeordnet`.
 
+Open **Einstellungen** in the dashboard to reread the current Homematic IP devices. **Geraetehierarchie anzeigen** shows each device and its functional channels in expandable sections.
+
 ## Project structure
 
 ```text

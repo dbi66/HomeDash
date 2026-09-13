@@ -226,10 +226,61 @@ def load_readings() -> list[dict[str, object]]:
     return readings
 
 
+def render_device_hierarchy(home: object) -> None:
+    devices = sorted(
+        getattr(home, "devices", []),
+        key=lambda device: str(getattr(device, "label", "")).lower(),
+    )
+    st.caption(f"{len(devices)} Homematic devices")
+    for device in devices:
+        label = str(getattr(device, "label", "Unnamed device"))
+        model = str(getattr(device, "modelType", "Unknown model"))
+        with st.expander(f"{label}  |  {model}"):
+            channels = getattr(device, "functionalChannels", [])
+            if not channels:
+                st.caption("No functional channels reported.")
+                continue
+            for channel in sorted(channels, key=lambda item: int(getattr(item, "index", 0))):
+                channel_type = str(getattr(channel, "functionalChannelType", "Unknown channel"))
+                channel_label = str(getattr(channel, "label", ""))
+                channel_index = getattr(channel, "index", "?")
+                title = f"Channel {channel_index}: {channel_type}"
+                if channel_label:
+                    title = f"{title}  |  {channel_label}"
+                st.write(title)
+
+
 st.markdown(
     f'<div class="dashboard-header"><h1>HomeClimate Dashboard</h1><p>Data provider: {escape(PROVIDER)}</p></div>',
     unsafe_allow_html=True,
 )
+
+if st.button("Einstellungen"):
+    st.session_state["show_settings"] = not st.session_state.get("show_settings", False)
+    st.rerun()
+
+if st.session_state.get("show_settings", False):
+    with st.container(border=True):
+        st.markdown("### Einstellungen")
+        if st.button("Homematic IP Geraete neu einlesen", type="primary"):
+            try:
+                st.session_state["device_home"] = load_home()
+                st.success("Homematic IP Geraete wurden neu eingelesen.")
+            except HomematicProviderError as error:
+                st.error(str(error))
+
+        if st.button("Geraetehierarchie anzeigen"):
+            st.session_state["show_device_hierarchy"] = not st.session_state.get(
+                "show_device_hierarchy", False
+            )
+            st.rerun()
+
+        if st.session_state.get("show_device_hierarchy", False):
+            device_home = st.session_state.get("device_home")
+            if device_home is None:
+                st.info("Lese zuerst die Homematic IP Geraete ein.")
+            else:
+                render_device_hierarchy(device_home)
 
 if st.button("Refresh readings", type="primary"):
     try:

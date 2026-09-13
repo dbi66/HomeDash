@@ -604,7 +604,20 @@ def render_climate_chart(
     target["series"] = "Ziel"
     humidity["series"] = "Feuchtigkeit"
     valve["series"] = "Ventil"
-    line_selection = alt.selection_point(fields=["series"], bind="legend", on="click", clear="dblclick")
+    chart_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", title)
+    selected_series = []
+    selector_columns = st.columns(4)
+    for column, series_name in zip(selector_columns, ("IST", "Ziel", "Feuchtigkeit", "Ventil")):
+        with column:
+            if st.checkbox(series_name, value=True, key=f"chart-line-{chart_slug}-{series_name}"):
+                selected_series.append(series_name)
+    if not selected_series:
+        st.info("Select at least one line.")
+        return
+    current = current[current["series"].isin(selected_series)]
+    target = target[target["series"].isin(selected_series)]
+    humidity = humidity[humidity["series"].isin(selected_series)]
+    valve = valve[valve["series"].isin(selected_series)]
     temperature_axis = alt.Axis(title="Temperature (C)", orient="left", titleColor="#0b7285")
     percentage_axis = alt.Axis(title="Humidity / valve (%)", orient="right", titleColor="#7c3aed")
     label_axis = alt.Axis(title=None, labels=False, ticks=False, domain=False)
@@ -624,9 +637,8 @@ def render_climate_chart(
                     domain=["IST", "Ziel", "Feuchtigkeit", "Ventil"],
                     range=["#d9480f", "#64748b", "#7c3aed", "#e03131"],
                 ),
-                legend=alt.Legend(title="Linien"),
+                legend=None,
             ),
-            opacity=alt.condition(line_selection, alt.value(1), alt.value(0.08)),
         )
 
     def endpoint_label(data: pd.DataFrame, color: str, fmt: str, scale=None, dy=0):
@@ -642,20 +654,20 @@ def render_climate_chart(
                 x=alt.X("recorded_at:T", scale=alt.Scale(padding=20)),
                 y=alt.Y("value:Q", scale=scale, axis=label_axis),
                 text=alt.Text("value:Q", format=fmt),
-                opacity=alt.condition(line_selection, alt.value(1), alt.value(0.08)),
             )
         )
 
-    chart = (
-        line(current, "#d9480f", scale=temperature_scale, axis=temperature_axis, points=len(history_frame) <= 72)
-        + line(target, "#94a3b8", dash=[6, 3], scale=temperature_scale, axis=label_axis)
-        + line(humidity, "#7c3aed", dash=[2, 2], scale=percent_scale, axis=percentage_axis)
-        + line(valve, "#e03131", dash=[2, 2], scale=percent_scale, axis=label_axis)
-        + endpoint_label(current, "#d9480f", ".1f", temperature_scale, dy=-8)
-        + endpoint_label(target, "#64748b", ".1f", temperature_scale, dy=10)
-        + endpoint_label(humidity, "#7c3aed", ".0f", percent_scale, dy=-8)
-        + endpoint_label(valve, "#e03131", ".0f", percent_scale, dy=10)
-    ).resolve_scale(y="independent").add_params(line_selection).properties(
+    layers = []
+    if not current.empty:
+        layers.extend([line(current, "#d9480f", scale=temperature_scale, axis=temperature_axis, points=len(history_frame) <= 72), endpoint_label(current, "#d9480f", ".1f", temperature_scale, dy=-8)])
+    if not target.empty:
+        layers.extend([line(target, "#94a3b8", dash=[6, 3], scale=temperature_scale, axis=label_axis), endpoint_label(target, "#64748b", ".1f", temperature_scale, dy=10)])
+    if not humidity.empty:
+        layers.extend([line(humidity, "#7c3aed", dash=[2, 2], scale=percent_scale, axis=percentage_axis), endpoint_label(humidity, "#7c3aed", ".0f", percent_scale, dy=-8)])
+    if not valve.empty:
+        layers.extend([line(valve, "#e03131", dash=[2, 2], scale=percent_scale, axis=label_axis), endpoint_label(valve, "#e03131", ".0f", percent_scale, dy=10)])
+
+    chart = alt.layer(*layers).resolve_scale(y="independent").properties(
         height=height,
         title=title,
         padding={"right": 70, "left": 20},

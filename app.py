@@ -6,7 +6,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from src.database import get_latest_readings, get_room_history, record_target_change, save_readings
+from src.database import get_latest_readings, get_room_events, get_room_history, record_target_change, save_readings
 from src.history import save_home_snapshot
 from src.hmip_provider import CONFIG_PATH, HomematicProviderError, load_home, get_room_readings as get_hmip_readings, map_room_readings, set_room_target_temperature
 from src.mock_provider import get_room_readings
@@ -316,20 +316,25 @@ def render_device_hierarchy(home: object) -> None:
     st.markdown(tree, unsafe_allow_html=True)
 
 
-st.markdown(
-    f'<div class="dashboard-header"><h1>HomeClimate Dashboard</h1><p>Data provider: {escape(PROVIDER)}</p></div>',
-    unsafe_allow_html=True,
-)
-
-top_actions = st.columns(2)
-with top_actions[0]:
-    if st.button("Einstellungen", width="stretch"):
+header_actions = st.columns([8, 1, 1])
+with header_actions[0]:
+    st.markdown(
+        f'<div class="dashboard-header"><h1>HomeClimate Dashboard</h1><p>Data provider: {escape(PROVIDER)}</p></div>',
+        unsafe_allow_html=True,
+    )
+with header_actions[1]:
+    if st.button("Home", width="stretch"):
+        st.query_params.clear()
+        st.session_state["selected_room"] = room_names[0] if "room_names" in locals() else ""
+        st.rerun()
+with header_actions[2]:
+    if st.button("⚙", help="Einstellungen", width="stretch"):
         st.session_state["show_settings"] = not st.session_state.get("show_settings", False)
         st.rerun()
-with top_actions[1]:
-    if st.button("Alle Diagramme", type="primary", width="stretch"):
-        st.session_state["show_all_graphs"] = not st.session_state.get("show_all_graphs", False)
-        st.rerun()
+
+if st.button("Alle Diagramme", type="primary", width="stretch"):
+    st.session_state["show_all_graphs"] = not st.session_state.get("show_all_graphs", False)
+    st.rerun()
 
 if st.session_state.get("show_settings", False):
     with st.container(border=True):
@@ -385,10 +390,41 @@ if not readings:
 
 room_names = sorted({str(reading["room_name"]) for reading in readings})
 query_room = st.query_params.get("room")
+page = st.query_params.get("view", "detail" if query_room else "overview")
 selected_room = query_room or st.session_state.get("selected_room", room_names[0])
 if selected_room not in room_names:
     selected_room = room_names[0]
 st.session_state["selected_room"] = selected_room
+
+
+def render_overview() -> None:
+    st.markdown('<div class="level-heading">Raeume</div>', unsafe_allow_html=True)
+    grouped = group_readings_by_level(readings)
+    for level in (UPSTAIRS, BASE_LEVEL, UNASSIGNED):
+        level_readings = grouped.get(level, [])
+        if not level_readings:
+            continue
+        st.markdown(f'<div class="level-heading">{escape(level)}</div>', unsafe_allow_html=True)
+        columns = st.columns(min(4, len(level_readings)))
+        for index, reading in enumerate(level_readings):
+            room_name = str(reading["room_name"])
+            valve = float(reading["valve_position"])
+            label = (
+                f"**{room_name}**\n\n"
+                f"{float(reading['current_temperature']):.1f} C  |  Target {float(reading['target_temperature']):.1f} C\n\n"
+                f"Humidity {float(reading['humidity']):.0f}%  |  Valve {valve:.0f}%"
+            )
+            with columns[index % len(columns)]:
+                if st.button(label, key=f"overview-room-{room_name}", width="stretch"):
+                    st.session_state["selected_room"] = room_name
+                    st.query_params["room"] = room_name
+                    st.query_params["view"] = "detail"
+                    st.rerun()
+
+
+if page == "overview":
+    render_overview()
+    st.stop()
 
 
 def render_history(room_name: str) -> None:
@@ -401,6 +437,12 @@ def render_history(room_name: str) -> None:
         options=(24, 168, 720),
         format_func=lambda hours: {24: "Last 24 hours", 168: "Last 7 days", 720: "Last 30 days"}[hours],
     )
+    scale_mode = st.selectbox(
+        "Chart scale",
+        options=("Fixed range", "Fit data"),
+        key=f"chart-scale-{room_name}",
+        help="Temperature defaults to 10-30 C. Humidity and valve use 0-100%.",
+    )
     history = get_room_history(DATABASE_PATH, room_name, history_window)
     if len(history) < 2:
         st.info("Not enough snapshots for a trend yet. Keep the collector running to build history.")
@@ -410,6 +452,8 @@ def render_history(room_name: str) -> None:
     history_frame["recorded_at"] = pd.to_datetime(history_frame["recorded_at"], utc=True)
     history_frame = history_frame.set_index("recorded_at")
     time_axis = alt.Axis(format="%H:%M", title=None)
+    temperature_scale = alt.Scale(domain=[10, 30]) if scale_mode == "Fixed range" else alt.Scale(zero=False)
+    percent_scale = alt.Scale(domain=[0, 100]) if scale_mode == "Fixed range" else alt.Scale(zero=False)
     mark_points = len(history_frame) <= 72
     chart_columns = st.columns(2)
     with chart_columns[0]:
@@ -428,7 +472,7 @@ def render_history(room_name: str) -> None:
             temperature_chart = temperature_chart.mark_line()
         temperature_chart = temperature_chart.encode(
             x=alt.X("recorded_at:T", axis=time_axis),
-            y=alt.Y("temperature:Q", title="Temperature (C)"),
+            y=alt.Y("temperature:Q", title="Temperature (C)", scale=temperature_scale),
             color=alt.Color("series:N", title=None),
             tooltip=[
                 alt.Tooltip("recorded_at:T", title="Time", format="%H:%M"),
@@ -453,7 +497,7 @@ def render_history(room_name: str) -> None:
             percent_chart = percent_chart.mark_line()
         percent_chart = percent_chart.encode(
             x=alt.X("recorded_at:T", axis=time_axis),
-            y=alt.Y("percent:Q", title="Percent"),
+            y=alt.Y("percent:Q", title="Percent", scale=percent_scale),
             color=alt.Color("series:N", title=None),
             tooltip=[
                 alt.Tooltip("recorded_at:T", title="Time", format="%H:%M"),
@@ -479,7 +523,7 @@ def render_compact_chart(room_name: str, hours: int) -> None:
     )
     chart = alt.Chart(frame).mark_line().encode(
         x=alt.X("recorded_at:T", axis=alt.Axis(format="%H:%M", title=None)),
-        y=alt.Y("value:Q", title="C"),
+        y=alt.Y("value:Q", title="C", scale=alt.Scale(domain=[10, 30])),
         color=alt.Color("series:N", title=None),
         tooltip=[alt.Tooltip("recorded_at:T", format="%H:%M"), "series:N", alt.Tooltip("value:Q", format=".1f")],
     ).properties(height=150, title=room_name)
@@ -524,6 +568,13 @@ with st.container(border=True):
     if PROVIDER != "homematic":
         st.caption("Target control is disabled in mock mode.")
     render_history(selected_room)
+    with st.expander("Event log"):
+        events = get_room_events(DATABASE_PATH, selected_room)
+        if not events:
+            st.caption("No valve or target-temperature events recorded yet.")
+        else:
+            for event in events:
+                st.write(f"{event['recorded_at']}  |  {event['message']}")
 
 if st.session_state.get("show_all_graphs", False):
     with st.container(border=True):

@@ -90,6 +90,8 @@ Snapshots are stored in the local `homematic_snapshots` SQLite table as JSON val
 
 The dashboard uses German room labels. `Kitchen` and `Küche` are displayed as `Küche`; `Living Room` and `Wohnzimmer` are displayed as `Wohnzimmer`. Rooms are grouped from the two FALMOT floor-heating controllers: `... - oben` becomes `Obergeschoss`, and `... - unten` becomes `Erdgeschoss`. Manual assignments override controller inference: `Esszimmer` is upstairs and `Vorratsraum` is on the ground floor. Rooms without a confirmed assignment, including `Schlafzimmer`, appear under `Nicht zugeordnet`.
 
+The Home view shows the room overview only. Select a room to open its detail view with controls, history, and an event log. The detail charts use 10-30 C as the default temperature scale and 0-100% for humidity and valve values; **Fit data** is available when the fixed range is not useful. Valve openings and target-temperature changes are recorded as room events.
+
 Open **Einstellungen** in the dashboard to reread the current Homematic IP devices. **Geraetehierarchie anzeigen** shows a graphical Home -> device -> channel tree with compact device cards and channel chips.
 
 The selected room also has guarded target-temperature control. In Homematic mode, enter a value between 5.0 C and 35.0 C, confirm the change, and choose **Set target temperature**. Changes are recorded in the local `target_changes` table. Mock mode keeps this control disabled.

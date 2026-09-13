@@ -27,6 +27,16 @@ CREATE TABLE IF NOT EXISTS target_changes (
     changed_at TEXT NOT NULL,
     source TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS room_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    room_name TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    message TEXT NOT NULL,
+    value REAL,
+    recorded_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_room_events_room_time
+    ON room_events (room_name, recorded_at DESC);
 """
 
 
@@ -56,6 +66,26 @@ def initialize_database(database_path: Union[str, Path]) -> None:
 
 def save_readings(database_path: Union[str, Path], readings: list[RoomReading]) -> None:
     initialize_database(database_path)
+    event_rows = []
+    with sqlite3.connect(database_path) as connection:
+        for reading in readings:
+            previous = connection.execute(
+                "SELECT target_temperature, valve_position FROM room_readings WHERE room_name = ? ORDER BY recorded_at DESC, id DESC LIMIT 1",
+                (reading.room_name,),
+            ).fetchone()
+            if previous:
+                previous_target, previous_valve = previous
+                if round(previous_target, 1) != round(reading.target_temperature, 1):
+                    event_rows.append((reading.room_name, "target_changed", f"Target changed to {reading.target_temperature:.1f} C", reading.target_temperature, reading.recorded_at.isoformat()))
+                if previous_valve <= 0 < reading.valve_position:
+                    event_rows.append((reading.room_name, "valve_opened", "Valve opened", reading.valve_position, reading.recorded_at.isoformat()))
+                elif previous_valve > 0 >= reading.valve_position:
+                    event_rows.append((reading.room_name, "valve_closed", "Valve closed", reading.valve_position, reading.recorded_at.isoformat()))
+        if event_rows:
+            connection.executemany(
+                "INSERT INTO room_events (room_name, event_type, message, value, recorded_at) VALUES (?, ?, ?, ?, ?)",
+                event_rows,
+            )
     rows = [
         (
             reading.room_name,
@@ -83,6 +113,17 @@ def save_readings(database_path: Union[str, Path], readings: list[RoomReading]) 
             """,
             rows,
         )
+
+
+def get_room_events(database_path: Union[str, Path], room_name: str, limit: int = 50) -> list[dict[str, object]]:
+    initialize_database(database_path)
+    with sqlite3.connect(database_path) as connection:
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(
+            "SELECT event_type, message, value, recorded_at FROM room_events WHERE room_name = ? ORDER BY recorded_at DESC, id DESC LIMIT ?",
+            (room_name, limit),
+        ).fetchall()
+    return [dict(row) for row in rows]
 
 
 def get_latest_readings(database_path: Union[str, Path]) -> list[dict[str, object]]:

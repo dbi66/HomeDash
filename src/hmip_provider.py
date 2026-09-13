@@ -5,11 +5,9 @@ from typing import Iterable, Optional, Union
 
 from homematicip.home import Home
 
+from src.config import CONFIG_PATH
 from src.models import RoomReading
 from src.room_layout import ROOM_LEVELS, canonical_room_name, level_from_controller_devices
-
-
-CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.ini"
 
 
 class HomematicProviderError(RuntimeError):

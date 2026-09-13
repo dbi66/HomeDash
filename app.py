@@ -1,5 +1,3 @@
-from pathlib import Path
-import os
 import re
 from html import escape
 
@@ -8,13 +6,12 @@ import pandas as pd
 import streamlit as st
 
 from src.database import get_latest_readings, get_room_events, get_room_history, save_readings
+from src.config import DATABASE_PATH, PROVIDER
 from src.history import save_home_snapshot
-from src.hmip_provider import CONFIG_PATH, HomematicProviderError, load_home, get_room_readings as get_hmip_readings, map_room_readings
+from src.hmip_provider import HomematicProviderError, load_home, get_room_readings as get_hmip_readings, map_room_readings
 from src.mock_provider import get_room_readings
 from src.room_layout import BASE_LEVEL, UNASSIGNED, UPSTAIRS, group_readings_by_level
 
-
-DATABASE_PATH = Path(__file__).resolve().parent / "data" / "heating_data.db"
 
 st.set_page_config(page_title="HomeClimate Dashboard", page_icon=":house:", layout="wide")
 
@@ -300,9 +297,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
-
-PROVIDER = os.getenv("HOMEDASH_PROVIDER", "homematic" if CONFIG_PATH.exists() else "mock").lower()
 
 
 def collect_readings():

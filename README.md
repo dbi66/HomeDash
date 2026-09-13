@@ -4,7 +4,7 @@ A local Python control center for monitoring and understanding your home's heati
 
 HomeClimate Dashboard collects data from a Homematic IP Access Point, with a focus on underfloor heating. It is designed for long-term storage and historical analysis, with enough room to keep at least 12 months of heating data. The architecture is also prepared for a future Viessmann heat pump integration.
 
-The current build uses Homematic IP when a local `config.ini` is present and falls back to deterministic mock readings otherwise. It provides live room cards, building-level grouping, and a local archive of Homematic state. Mock mode is still available with `HOMEDASH_PROVIDER=mock`.
+HomeDash v0.2 uses Homematic IP when a local `config.ini` is present and falls back to deterministic mock readings otherwise. It provides a room overview, room detail pages, historical charts, event logging, and a local archive of Homematic state. Mock mode is still available with `HOMEDASH_PROVIDER=mock`.
 
 ## What it does
 
@@ -46,6 +46,18 @@ The script asks for the Access Point's SGTIN. When prompted, press the blue syst
 ```bash
 python scripts/init_db.py
 streamlit run app.py
+```
+
+The database is kept at `data/heating_data.db` and is never recreated by initialization. You can use another path with `HOMEDASH_DATABASE=/path/to/heating_data.db`. Create a consistent backup before maintenance or upgrades:
+
+```bash
+python scripts/backup_database.py
+```
+
+Backups are written to `data/backups/`, which is intentionally excluded from Git. An explicit backup path is also supported:
+
+```bash
+python scripts/backup_database.py --output /path/to/heating_data-backup.db
 ```
 
 The dashboard starts at `http://localhost:8501`. With Homematic IP configured, use **Refresh readings** to fetch the latest room data from the cloud and store it locally. To run without hardware, use:
@@ -112,6 +124,7 @@ HomeDash/
 |-- data/
 |   `-- heating_data.db    # Locally generated SQLite database
 |-- src/
+|   |-- config.py          # Central runtime and database paths
 |   |-- database.py        # SQLite read and write operations
 |   |-- hmip_provider.py   # Homematic IP connection and room mapping
 |   |-- history.py         # Full Homematic snapshot archive
@@ -120,6 +133,7 @@ HomeDash/
 |   |-- room_layout.py      # Building-level room assignments
 |   `-- __init__.py
 |-- scripts/
+|   |-- backup_database.py # Consistent SQLite backup command
 |   |-- collect_snapshot.py # Historical snapshot collector
 |   |-- init_db.py         # Database initialization script
 |   |-- inspect_homematic.py # Homematic data inventory helper

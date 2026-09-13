@@ -8,12 +8,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.config import DATABASE_PATH
 from src.database import save_readings
 from src.history import save_home_snapshot
 from src.hmip_provider import HomematicProviderError, load_home, map_room_readings
-
-
-DATABASE_PATH = PROJECT_ROOT / "data" / "heating_data.db"
 
 
 def collect_once(snapshot_interval_minutes: int) -> tuple[int, int]:

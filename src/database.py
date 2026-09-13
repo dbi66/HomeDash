@@ -8,6 +8,17 @@ from src.history import initialize_history
 from src.room_layout import ROOM_ALIASES, ROOM_LEVELS, UNASSIGNED
 
 
+def backup_database(database_path: Union[str, Path], backup_path: Union[str, Path]) -> Path:
+    """Create a consistent SQLite backup without modifying the source database."""
+    source = Path(database_path)
+    destination = Path(backup_path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(source) as source_connection:
+        with sqlite3.connect(destination) as backup_connection:
+            source_connection.backup(backup_connection)
+    return destination
+
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS room_readings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

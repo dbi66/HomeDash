@@ -6,5 +6,6 @@ build/
 DerivedData/
 xcuserdata/
 data/*.db
+data/backups/
 .env
 config.ini

@@ -658,7 +658,23 @@ def render_history(room_name: str) -> None:
                 alt.Tooltip("temperature:Q", title="C", format=".1f"),
             ],
         ).properties(height=220)
-        st.altair_chart(temperature_chart, use_container_width=True)
+        temperature_labels = (
+            alt.Chart(temperature_data)
+            .transform_window(
+                rank="rank()",
+                sort=[alt.SortField("recorded_at", order="descending")],
+                groupby=["series"],
+            )
+            .transform_filter(alt.datum.rank == 1)
+            .mark_text(align="left", dx=5, fontSize=11)
+            .encode(
+                x="recorded_at:T",
+                y="temperature:Q",
+                text=alt.Text("temperature:Q", format=".1f"),
+                color=alt.Color("series:N", title=None),
+            )
+        )
+        st.altair_chart(temperature_chart + temperature_labels, use_container_width=True)
     with chart_columns[1]:
         percent_data = history_frame.reset_index().melt(
             id_vars="recorded_at",
@@ -683,7 +699,23 @@ def render_history(room_name: str) -> None:
                 alt.Tooltip("percent:Q", title="%", format=".0f"),
             ],
         ).properties(height=220)
-        st.altair_chart(percent_chart, use_container_width=True)
+        percent_labels = (
+            alt.Chart(percent_data)
+            .transform_window(
+                rank="rank()",
+                sort=[alt.SortField("recorded_at", order="descending")],
+                groupby=["series"],
+            )
+            .transform_filter(alt.datum.rank == 1)
+            .mark_text(align="left", dx=5, fontSize=11)
+            .encode(
+                x="recorded_at:T",
+                y="percent:Q",
+                text=alt.Text("percent:Q", format=".0f"),
+                color=alt.Color("series:N", title=None),
+            )
+        )
+        st.altair_chart(percent_chart + percent_labels, use_container_width=True)
 
 
 def render_compact_chart(room_name: str, hours: int) -> None:
@@ -705,7 +737,23 @@ def render_compact_chart(room_name: str, hours: int) -> None:
         color=alt.Color("series:N", title=None),
         tooltip=[alt.Tooltip("recorded_at:T", format="%H:%M"), "series:N", alt.Tooltip("value:Q", format=".1f")],
     ).properties(height=150, title=room_name)
-    st.altair_chart(chart, use_container_width=True)
+    labels = (
+        alt.Chart(frame)
+        .transform_window(
+            rank="rank()",
+            sort=[alt.SortField("recorded_at", order="descending")],
+            groupby=["series"],
+        )
+        .transform_filter(alt.datum.rank == 1)
+        .mark_text(align="left", dx=5, fontSize=10)
+        .encode(
+            x="recorded_at:T",
+            y="value:Q",
+            text=alt.Text("value:Q", format=".1f"),
+            color=alt.Color("series:N", title=None),
+        )
+    )
+    st.altair_chart(chart + labels, use_container_width=True)
 
 
 with st.container(border=True):

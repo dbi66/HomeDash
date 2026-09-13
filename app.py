@@ -294,6 +294,12 @@ st.markdown(
                 [class*="st-key-function-navigation"] {
                     min-width: 190px;
                 }
+
+                [data-testid="stCheckbox"] label p {
+                    color: #334e68 !important;
+                    font-size: 0.78rem;
+                    font-weight: 700;
+                }
     </style>
     """,
     unsafe_allow_html=True,
@@ -605,12 +611,13 @@ def render_climate_chart(
     valve["series"] = "Ventil"
     chart_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", title)
     selected_series = []
-    render_chart_legend()
-    selector_columns = st.columns(4)
-    for column, series_name in zip(selector_columns, ("IST", "Ziel", "Feuchtigkeit", "Ventil")):
-        with column:
-            if st.checkbox(series_name, value=True, key=f"chart-line-{chart_slug}-{series_name}"):
-                selected_series.append(series_name)
+    with st.container(border=True):
+        render_chart_legend()
+        selector_columns = st.columns(4)
+        for column, series_name in zip(selector_columns, ("IST", "Ziel", "Feuchtigkeit", "Ventil")):
+            with column:
+                if st.checkbox(series_name, value=True, key=f"chart-line-{chart_slug}-{series_name}"):
+                    selected_series.append(series_name)
     if not selected_series:
         st.info("Select at least one line.")
         return

@@ -588,7 +588,7 @@ def render_overview_graphs() -> None:
         if len(history) < 2:
             continue
         with graph_columns[index % 2]:
-            render_climate_chart(pd.DataFrame(history), room_name, 180, "Fixed range")
+            render_climate_chart(pd.DataFrame(history), room_name, 180, "Fixed range", "all")
 
 
 def render_climate_chart(
@@ -596,6 +596,7 @@ def render_climate_chart(
     title: str,
     height: int,
     scale_mode: str,
+    key_prefix: str,
 ) -> None:
     history_frame["recorded_at"] = pd.to_datetime(history_frame["recorded_at"], utc=True)
     temperature_scale = alt.Scale(domain=[10, 30]) if scale_mode == "Fixed range" else alt.Scale(zero=False)
@@ -616,7 +617,7 @@ def render_climate_chart(
         selector_columns = st.columns(4)
         for column, series_name in zip(selector_columns, ("IST", "Ziel", "Feuchtigkeit", "Ventil")):
             with column:
-                if st.checkbox(series_name, value=True, key=f"chart-line-{chart_slug}-{series_name}"):
+                if st.checkbox(series_name, value=True, key=f"chart-line-{key_prefix}-{chart_slug}-{series_name}"):
                     selected_series.append(series_name)
     if not selected_series:
         st.info("Select at least one line.")
@@ -717,7 +718,7 @@ def render_history(room_name: str) -> None:
         return
 
     history_frame = pd.DataFrame(history)
-    render_climate_chart(history_frame, room_name, 360, scale_mode)
+    render_climate_chart(history_frame, room_name, 360, scale_mode, "detail")
 
 
 def render_compact_chart(room_name: str, hours: int) -> None:
@@ -725,7 +726,7 @@ def render_compact_chart(room_name: str, hours: int) -> None:
     if len(history) < 2:
         st.caption(f"{room_name}: not enough data")
         return
-    render_climate_chart(pd.DataFrame(history), room_name, 180, "Fixed range")
+    render_climate_chart(pd.DataFrame(history), room_name, 180, "Fixed range", "compact")
 
 
 if page == "overview":

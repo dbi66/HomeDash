@@ -600,19 +600,22 @@ def render_climate_chart(
     target = history_frame[["recorded_at", "target_temperature"]].rename(columns={"target_temperature": "value"})
     humidity = history_frame[["recorded_at", "humidity"]].rename(columns={"humidity": "value"})
     valve = history_frame[["recorded_at", "valve_position"]].rename(columns={"valve_position": "value"})
+    temperature_axis = alt.Axis(title="Temperature (C)", orient="left", titleColor="#0b7285")
+    percentage_axis = alt.Axis(title="Humidity / valve (%)", orient="right", titleColor="#7c3aed")
+    label_axis = alt.Axis(title=None, labels=False, ticks=False, domain=False)
 
-    def line(data: pd.DataFrame, color: str, dash=None, scale=None, points=False):
+    def line(data: pd.DataFrame, color: str, dash=None, scale=None, axis=None, points=False):
         mark = {"color": color, "strokeWidth": 2}
         if dash:
             mark["strokeDash"] = dash
         if points:
             mark["point"] = {"size": 18, "filled": True}
         return alt.Chart(data).mark_line(**mark).encode(
-            x=alt.X("recorded_at:T", axis=time_axis),
-            y=alt.Y("value:Q", scale=scale),
+            x=alt.X("recorded_at:T", axis=time_axis, scale=alt.Scale(padding=20)),
+            y=alt.Y("value:Q", scale=scale, axis=axis),
         )
 
-    def endpoint_label(data: pd.DataFrame, color: str, fmt: str, scale=None):
+    def endpoint_label(data: pd.DataFrame, color: str, fmt: str, scale=None, dy=0):
         return (
             alt.Chart(data)
             .transform_window(
@@ -620,20 +623,24 @@ def render_climate_chart(
                 sort=[alt.SortField("recorded_at", order="descending")],
             )
             .transform_filter(alt.datum.rank == 1)
-            .mark_text(align="left", dx=5, fontSize=10, color=color)
-            .encode(x="recorded_at:T", y=alt.Y("value:Q", scale=scale), text=alt.Text("value:Q", format=fmt))
+            .mark_text(align="left", dx=10, dy=dy, fontSize=10, color=color)
+            .encode(
+                x=alt.X("recorded_at:T", scale=alt.Scale(padding=20)),
+                y=alt.Y("value:Q", scale=scale, axis=label_axis),
+                text=alt.Text("value:Q", format=fmt),
+            )
         )
 
     chart = (
-        line(current, "#0b7285", scale=temperature_scale, points=len(history_frame) <= 72)
-        + line(target, "#f08c00", dash=[6, 3], scale=temperature_scale)
-        + line(humidity, "#7c3aed", dash=[2, 2], scale=percent_scale)
-        + line(valve, "#e03131", dash=[2, 2], scale=percent_scale)
-        + endpoint_label(current, "#0b7285", ".1f", temperature_scale)
-        + endpoint_label(target, "#f08c00", ".1f", temperature_scale)
-        + endpoint_label(humidity, "#7c3aed", ".0f", percent_scale)
-        + endpoint_label(valve, "#e03131", ".0f", percent_scale)
-    ).resolve_scale(y="independent").properties(height=height, title=title)
+        line(current, "#0b7285", scale=temperature_scale, axis=temperature_axis, points=len(history_frame) <= 72)
+        + line(target, "#f08c00", dash=[6, 3], scale=temperature_scale, axis=label_axis)
+        + line(humidity, "#7c3aed", dash=[2, 2], scale=percent_scale, axis=percentage_axis)
+        + line(valve, "#e03131", dash=[2, 2], scale=percent_scale, axis=label_axis)
+        + endpoint_label(current, "#0b7285", ".1f", temperature_scale, dy=-8)
+        + endpoint_label(target, "#f08c00", ".1f", temperature_scale, dy=10)
+        + endpoint_label(humidity, "#7c3aed", ".0f", percent_scale, dy=-8)
+        + endpoint_label(valve, "#e03131", ".0f", percent_scale, dy=10)
+    ).resolve_scale(y="independent").properties(height=height, title=title, padding={"right": 70, "left": 20})
     st.altair_chart(chart, use_container_width=True)
 
 

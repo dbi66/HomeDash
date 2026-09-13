@@ -62,6 +62,20 @@ To inspect the data exposed by the Homematic system without printing credentials
 python scripts/inspect_homematic.py
 ```
 
+To archive the current state of every available Homematic device, functional channel, and group:
+
+```bash
+python scripts/collect_snapshot.py
+```
+
+For continuous collection every five minutes:
+
+```bash
+python scripts/collect_snapshot.py --interval 300
+```
+
+Snapshots are stored in the local `homematic_snapshots` SQLite table as JSON values. The HmIP cloud does not expose a historical backfill endpoint through the installed API, so historical coverage starts when collection begins.
+
 The dashboard uses German room labels. `Kitchen` and `Küche` are displayed as `Küche`; `Living Room` and `Wohnzimmer` are displayed as `Wohnzimmer`. Rooms are grouped from the two FALMOT floor-heating controllers: `... - oben` becomes `Obergeschoss`, and `... - unten` becomes `Erdgeschoss`. Manual assignments override controller inference: `Esszimmer` is upstairs and `Vorratsraum` is on the base level. Rooms without a confirmed assignment, including `Schlafzimmer`, appear under `Nicht zugeordnet`.
 
 ## Project structure
@@ -74,11 +88,13 @@ HomeDash/
 |-- src/
 |   |-- database.py        # SQLite read and write operations
 |   |-- hmip_provider.py   # Homematic IP connection and room mapping
+|   |-- history.py         # Full Homematic snapshot archive
 |   |-- mock_provider.py   # Deterministic room readings for development
 |   |-- models.py          # Shared room reading model
 |   |-- room_layout.py      # Building-level room assignments
 |   `-- __init__.py
 |-- scripts/
+|   |-- collect_snapshot.py # Historical snapshot collector
 |   |-- init_db.py         # Database initialization script
 |   `-- inspect_homematic.py # Homematic data inventory helper
 |-- requirements.txt       # Project dependencies
@@ -91,6 +107,7 @@ HomeDash/
 - [x] Connect the dashboard to Homematic IP through a real client
 - [x] Group dashboard rooms into base level and upstairs sections
 - [x] Add a helper for inspecting available Homematic devices and data fields
+- [x] Archive full Homematic snapshots for future history and analysis
 - [ ] Map the remaining rooms to their building levels
 - [ ] Read heating components such as wall thermostats and underfloor heating controllers, then show them live
 - [ ] Add a data logger that writes values to SQLite every minute or hour, using a macOS LaunchDaemon or background loop

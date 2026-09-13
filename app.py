@@ -5,7 +5,8 @@ from html import escape
 import streamlit as st
 
 from src.database import get_latest_readings, save_readings
-from src.hmip_provider import CONFIG_PATH, HomematicProviderError, get_room_readings as get_hmip_readings
+from src.history import save_home_snapshot
+from src.hmip_provider import CONFIG_PATH, HomematicProviderError, load_home, get_room_readings as get_hmip_readings, map_room_readings
 from src.mock_provider import get_room_readings
 from src.room_layout import BASE_LEVEL, UNASSIGNED, UPSTAIRS, group_readings_by_level
 
@@ -145,7 +146,13 @@ st.markdown(
 
 if st.button("Refresh readings", type="primary"):
     try:
-        save_readings(DATABASE_PATH, collect_readings())
+        if PROVIDER == "homematic":
+            home = load_home()
+            save_readings(DATABASE_PATH, map_room_readings(home))
+            snapshot_count = save_home_snapshot(DATABASE_PATH, home)
+            st.caption(f"Archived {snapshot_count} Homematic objects.")
+        else:
+            save_readings(DATABASE_PATH, collect_readings())
         st.success("Readings updated.")
     except HomematicProviderError as error:
         st.error(str(error))

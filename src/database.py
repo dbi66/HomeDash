@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Union
 
 from src.models import RoomReading
+from src.history import initialize_history
 from src.room_layout import ROOM_ALIASES, ROOM_LEVELS, UNASSIGNED
 
 
@@ -42,6 +43,7 @@ def initialize_database(database_path: Union[str, Path]) -> None:
                 "UPDATE room_readings SET level = ? WHERE room_name = ?",
                 (level, room_name),
             )
+    initialize_history(path)
 
 
 def save_readings(database_path: Union[str, Path], readings: list[RoomReading]) -> None:

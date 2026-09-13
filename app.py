@@ -570,7 +570,6 @@ def render_overview() -> None:
 
 def render_overview_graphs() -> None:
     st.markdown('<div class="level-heading">Alle Diagramme</div>', unsafe_allow_html=True)
-    render_chart_legend()
     hours = st.selectbox(
         "History range",
         options=(24, 168, 720),
@@ -606,6 +605,7 @@ def render_climate_chart(
     valve["series"] = "Ventil"
     chart_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", title)
     selected_series = []
+    render_chart_legend()
     selector_columns = st.columns(4)
     for column, series_name in zip(selector_columns, ("IST", "Ziel", "Feuchtigkeit", "Ventil")):
         with column:
@@ -709,7 +709,6 @@ def render_history(room_name: str) -> None:
         st.info("Not enough snapshots for a trend yet. Keep the collector running to build history.")
         return
 
-    render_chart_legend()
     history_frame = pd.DataFrame(history)
     render_climate_chart(history_frame, room_name, 360, scale_mode)
 

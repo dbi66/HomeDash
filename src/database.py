@@ -161,6 +161,39 @@ def get_latest_readings(database_path: Union[str, Path]) -> list[dict[str, objec
     return [dict(row) for row in rows]
 
 
+def get_room_trends(database_path: Union[str, Path], room_name: str) -> dict[str, str]:
+    """Return direction markers for the latest room temperature and humidity."""
+    initialize_database(database_path)
+    with sqlite3.connect(database_path) as connection:
+        rows = connection.execute(
+            """
+            SELECT current_temperature, humidity
+            FROM room_readings
+            WHERE room_name = ?
+            ORDER BY recorded_at DESC, id DESC
+            LIMIT 2
+            """,
+            (room_name,),
+        ).fetchall()
+
+    if len(rows) < 2:
+        return {"temperature": "->", "humidity": "->"}
+
+    current, previous = rows[0], rows[1]
+
+    def direction(current_value: float, previous_value: float) -> str:
+        if current_value > previous_value:
+            return "↑"
+        if current_value < previous_value:
+            return "↓"
+        return "→"
+
+    return {
+        "temperature": direction(current[0], previous[0]),
+        "humidity": direction(current[1], previous[1]),
+    }
+
+
 def get_room_history(
     database_path: Union[str, Path],
     room_name: str,

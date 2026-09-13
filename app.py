@@ -5,7 +5,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from src.database import get_latest_readings, get_room_events, get_room_history, save_readings
+from src.database import get_latest_readings, get_room_events, get_room_history, get_room_trends, save_readings
 from src.config import DATABASE_PATH, PROVIDER
 from src.history import save_home_snapshot
 from src.hmip_provider import HomematicProviderError, load_home, get_room_readings as get_hmip_readings, map_room_readings
@@ -475,9 +475,10 @@ def render_overview() -> None:
         for index, reading in enumerate(level_readings):
             room_name = str(reading["room_name"])
             valve = float(reading["valve_position"])
+            trends = get_room_trends(DATABASE_PATH, room_name)
             label = (
                 f"**{room_name}**\n\n"
-                f"{float(reading['current_temperature']):.1f} C  |  {float(reading['humidity']):.0f}%\n\n"
+                f"{float(reading['current_temperature']):.1f} C {trends['temperature']}  |  {float(reading['humidity']):.0f}% {trends['humidity']}\n\n"
                 f"Target {float(reading['target_temperature']):.1f} C  |  Valve {valve_meter(valve)} {valve:.0f}%"
             )
             with columns[index % len(columns)]:

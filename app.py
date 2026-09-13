@@ -266,6 +266,13 @@ st.markdown(
 
                 [class*="st-key-overview-room-"] button p:first-child {
                     color: #102a43;
+                    font-size: 1.35rem;
+                    font-weight: 800;
+                    line-height: 1.05;
+                }
+
+                [class*="st-key-overview-room-"] button p:nth-child(2) {
+                    color: #102a43;
                     font-size: 1.8rem;
                     font-weight: 800;
                     line-height: 1.05;
@@ -451,8 +458,8 @@ def render_overview() -> None:
             room_name = str(reading["room_name"])
             valve = float(reading["valve_position"])
             label = (
-                f"**{float(reading['current_temperature']):.1f} C**\n\n"
-                f"**{room_name}**  |  Target {float(reading['target_temperature']):.1f} C\n\n"
+                f"**{room_name}**\n\n"
+                f"{float(reading['current_temperature']):.1f} C  |  Target {float(reading['target_temperature']):.1f} C\n\n"
                 f"Humidity {float(reading['humidity']):.0f}%  |  Valve {valve:.0f}%"
             )
             with columns[index % len(columns)]:

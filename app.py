@@ -316,7 +316,7 @@ def render_device_hierarchy(home: object) -> None:
     st.markdown(tree, unsafe_allow_html=True)
 
 
-header_actions = st.columns([8, 1, 1])
+header_actions = st.columns([7, 1, 1, 1])
 with header_actions[0]:
     st.markdown(
         f'<div class="dashboard-header"><h1>HomeClimate Dashboard</h1><p>Data provider: {escape(PROVIDER)}</p></div>',
@@ -328,6 +328,20 @@ with header_actions[1]:
         st.session_state["selected_room"] = room_names[0] if "room_names" in locals() else ""
         st.rerun()
 with header_actions[2]:
+    if st.button("Refresh", help="Read current Homematic IP values", width="stretch"):
+        try:
+            if PROVIDER == "homematic":
+                home = load_home()
+                save_readings(DATABASE_PATH, map_room_readings(home))
+                snapshot_count = save_home_snapshot(DATABASE_PATH, home)
+                st.caption(f"Archived {snapshot_count} Homematic objects.")
+            else:
+                save_readings(DATABASE_PATH, collect_readings())
+            st.success("Readings updated.")
+            st.rerun()
+        except HomematicProviderError as error:
+            st.error(str(error))
+with header_actions[3]:
     if st.button("⚙", help="Einstellungen", width="stretch"):
         st.session_state["show_settings"] = not st.session_state.get("show_settings", False)
         st.rerun()
@@ -363,19 +377,6 @@ if st.session_state.get("show_settings", False):
                 st.info("Lese zuerst die Homematic IP Geraete ein.")
             else:
                 render_device_hierarchy(device_home)
-
-if st.button("Refresh readings", type="primary"):
-    try:
-        if PROVIDER == "homematic":
-            home = load_home()
-            save_readings(DATABASE_PATH, map_room_readings(home))
-            snapshot_count = save_home_snapshot(DATABASE_PATH, home)
-            st.caption(f"Archived {snapshot_count} Homematic objects.")
-        else:
-            save_readings(DATABASE_PATH, collect_readings())
-        st.success("Readings updated.")
-    except HomematicProviderError as error:
-        st.error(str(error))
 
 try:
     readings = load_readings()

@@ -263,6 +263,10 @@ st.markdown(
                     font-size: 1.45rem;
                     line-height: 1;
                 }
+
+                [class*="st-key-function-navigation"] {
+                    min-width: 190px;
+                }
     </style>
     """,
     unsafe_allow_html=True,
@@ -321,7 +325,7 @@ def render_device_hierarchy(home: object) -> None:
     st.markdown(tree, unsafe_allow_html=True)
 
 
-header_actions = st.columns([7, 1, 2])
+header_actions = st.columns([6, 2, 3])
 with header_actions[0]:
     st.markdown(
         f'<div class="dashboard-header"><h1>HomeClimate Dashboard</h1><p>Data provider: {escape(PROVIDER)}</p></div>',
@@ -341,22 +345,23 @@ with header_actions[1]:
             st.rerun()
         except HomematicProviderError as error:
             st.error(str(error))
-route_hint = "Raumdetail" if st.query_params.get("view") == "detail" else "Home"
-if "navigation-last" not in st.session_state:
-    st.session_state["navigation-last"] = route_hint
-elif route_hint == "Raumdetail" and st.session_state["navigation-last"] == "Home":
-    st.session_state["navigation-last"] = "Raumdetail"
+with header_actions[2]:
+    route_hint = "Raumdetail" if st.query_params.get("view") == "detail" else "Home"
+    if "navigation-last" not in st.session_state:
+        st.session_state["navigation-last"] = route_hint
+    elif route_hint == "Raumdetail" and st.session_state["navigation-last"] == "Home":
+        st.session_state["navigation-last"] = "Raumdetail"
 
-pending_navigation = st.session_state.pop("pending-navigation", None)
-if pending_navigation:
-    st.session_state["function-navigation"] = pending_navigation
+    pending_navigation = st.session_state.pop("pending-navigation", None)
+    if pending_navigation:
+        st.session_state["function-navigation"] = pending_navigation
 
-function_choice = st.selectbox(
-    "Navigation",
-    options=("Home", "Raumdetail", "Alle Diagramme", "Einstellungen"),
-    key="function-navigation",
-    label_visibility="collapsed",
-)
+    function_choice = st.selectbox(
+        "Navigation",
+        options=("Home", "Raumdetail", "Alle Diagramme", "Einstellungen"),
+        key="function-navigation",
+        label_visibility="collapsed",
+    )
 previous_choice = st.session_state.get("navigation-last")
 st.session_state["navigation-last"] = function_choice
 if function_choice == "Home":

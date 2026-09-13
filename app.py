@@ -1,8 +1,10 @@
 from pathlib import Path
+import os
 
 import streamlit as st
 
 from src.database import get_latest_readings, save_readings
+from src.hmip_provider import CONFIG_PATH, HomematicProviderError, get_room_readings as get_hmip_readings
 from src.mock_provider import get_room_readings
 
 
@@ -11,22 +13,39 @@ DATABASE_PATH = Path(__file__).resolve().parent / "data" / "heating_data.db"
 st.set_page_config(page_title="HomeClimate Dashboard", page_icon=":house:", layout="wide")
 
 
+PROVIDER = os.getenv("HOMEDASH_PROVIDER", "homematic" if CONFIG_PATH.exists() else "mock").lower()
+
+
+def collect_readings():
+    if PROVIDER == "homematic":
+        return get_hmip_readings()
+    return get_room_readings()
+
+
 def load_readings() -> list[dict[str, object]]:
     readings = get_latest_readings(DATABASE_PATH)
     if not readings:
-        save_readings(DATABASE_PATH, get_room_readings())
+        save_readings(DATABASE_PATH, collect_readings())
         readings = get_latest_readings(DATABASE_PATH)
     return readings
 
 
 st.title("HomeClimate Dashboard")
-st.caption("Milestone 1 is running with local mock readings. Homematic IP integration comes next.")
+st.caption(f"Data provider: {PROVIDER}")
 
-if st.button("Refresh mock data", type="primary"):
-    save_readings(DATABASE_PATH, get_room_readings())
-    st.rerun()
+if st.button("Refresh readings", type="primary"):
+    try:
+        save_readings(DATABASE_PATH, collect_readings())
+        st.success("Readings updated.")
+    except HomematicProviderError as error:
+        st.error(str(error))
 
-readings = load_readings()
+try:
+    readings = load_readings()
+except HomematicProviderError as error:
+    st.error(str(error))
+    st.info("Set HOMEDASH_PROVIDER=mock to run without Homematic IP hardware.")
+    readings = get_latest_readings(DATABASE_PATH)
 
 if not readings:
     st.warning("No room readings are available yet.")

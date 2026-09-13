@@ -4,7 +4,7 @@ A local Python control center for monitoring and understanding your home's heati
 
 HomeClimate Dashboard collects data from a Homematic IP Access Point, with a focus on underfloor heating. It is designed for long-term storage and historical analysis, with enough room to keep at least 12 months of heating data. The architecture is also prepared for a future Viessmann heat pump integration.
 
-The first milestone is now runnable with deterministic mock readings. This lets the dashboard and database evolve before hardware authentication is connected.
+The first two milestones are now runnable. The dashboard uses Homematic IP when a local `config.ini` is present and falls back to deterministic mock readings otherwise. Mock mode is still available with `HOMEDASH_PROVIDER=mock`.
 
 ## What it does
 
@@ -48,7 +48,13 @@ python scripts/init_db.py
 streamlit run app.py
 ```
 
-The dashboard starts at `http://localhost:8501`. On first launch it seeds the local database with mock readings for the Living Room, Kitchen, and Bedroom. Use **Refresh mock data** to store another reading set.
+The dashboard starts at `http://localhost:8501`. With Homematic IP configured, use **Refresh readings** to fetch the latest room data from the cloud and store it locally. To run without hardware, use:
+
+```bash
+HOMEDASH_PROVIDER=mock streamlit run app.py
+```
+
+Keep `config.ini` local. It contains the Homematic IP auth token and is excluded from Git.
 
 ## Project structure
 
@@ -59,6 +65,7 @@ HomeDash/
 |   `-- heating_data.db    # Locally generated SQLite database
 |-- src/
 |   |-- database.py        # SQLite read and write operations
+|   |-- hmip_provider.py   # Homematic IP connection and room mapping
 |   |-- mock_provider.py   # Deterministic room readings for development
 |   |-- models.py          # Shared room reading model
 |   `-- __init__.py
@@ -71,7 +78,7 @@ HomeDash/
 ## Roadmap
 
 - [x] First end-to-end slice with mock readings, SQLite persistence, and Streamlit UI
-- [ ] Connect the dashboard to Homematic IP through a real client
+- [x] Connect the dashboard to Homematic IP through a real client
 - [ ] Read heating components such as wall thermostats and underfloor heating controllers, then show them live
 - [ ] Add a data logger that writes values to SQLite every minute or hour, using a macOS LaunchDaemon or background loop
 - [ ] Add interactive historical views with Pandas DataFrames and Streamlit line charts

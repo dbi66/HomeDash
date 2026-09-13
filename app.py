@@ -446,6 +446,11 @@ if selected_room not in room_names:
 st.session_state["selected_room"] = selected_room
 
 
+def valve_meter(valve_position: float) -> str:
+    filled = round(max(0.0, min(100.0, valve_position)) / 10)
+    return "[{}{}]".format("#" * filled, "-" * (10 - filled))
+
+
 def render_overview() -> None:
     grouped = group_readings_by_level(readings)
     for level in (UPSTAIRS, BASE_LEVEL, UNASSIGNED):
@@ -459,8 +464,8 @@ def render_overview() -> None:
             valve = float(reading["valve_position"])
             label = (
                 f"**{room_name}**\n\n"
-                f"{float(reading['current_temperature']):.1f} C  |  Target {float(reading['target_temperature']):.1f} C\n\n"
-                f"Humidity {float(reading['humidity']):.0f}%  |  Valve {valve:.0f}%"
+                f"{float(reading['current_temperature']):.1f} C  |  Humidity {float(reading['humidity']):.0f}%\n\n"
+                f"Target {float(reading['target_temperature']):.1f} C  |  Valve {valve_meter(valve)} {valve:.0f}%"
             )
             with columns[index % len(columns)]:
                 if st.button(label, key=f"overview-room-{room_name}", width="stretch"):

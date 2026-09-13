@@ -103,11 +103,11 @@ HOMEDASH_PROVIDER=mock streamlit run app.py
 
 ## Production and Development Profiles
 
-Production and development use separate ports and databases:
+Production and development use separate deployed applications, ports, and databases:
 
 | Profile | Start method | Port | Database |
 |---|---|---:|---|
-| Production | macOS LaunchAgent | `8501` | `data/heating_data.db` |
+| Production | Dedicated detached worktree + macOS LaunchAgent | `8501` | `~/Library/Application Support/HomeDash/production/data/heating_data.db` |
 | Development/test | Manual | `8502` | `data/heating_data-test.db` |
 
 Start the development version manually:
@@ -131,7 +131,15 @@ An existing development copy is protected by default. Replace it explicitly with
 python scripts/clone_production_database.py --force
 ```
 
-Install production as a macOS LaunchAgent so it starts at login and restarts if it exits:
+Deploy a specific commit to the independent production worktree and install its macOS LaunchAgents:
+
+```bash
+sh scripts/deploy_production.sh HEAD
+```
+
+The production service runs only from `~/Library/Application Support/HomeDash/production`. Changes in this development checkout do not affect production until `deploy_production.sh` is run with an explicit commit or tag. The first deployment creates a consistent copy of the existing `data/heating_data.db`; it never replaces an existing production database.
+
+To install or restart the LaunchAgents without changing the deployed code:
 
 ```bash
 sh scripts/install_production_launch_agent.sh
@@ -143,7 +151,7 @@ Remove the automatic production service:
 sh scripts/uninstall_production_launch_agent.sh
 ```
 
-Production logs are written to `data/logs/`, which is ignored by Git. Installing or removing the LaunchAgent does not delete or reset any database.
+Production logs are written to the deployed data directory, which is outside the Git checkout. Installing or removing the LaunchAgent does not delete or reset any database.
 
 The production installation includes a separate collector LaunchAgent. It runs one Homematic snapshot every five minutes and exits; the Streamlit server remains an independent continuously running service. Collector logs are written to `data/logs/collector.*.log`.
 

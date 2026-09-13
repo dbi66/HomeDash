@@ -7,17 +7,24 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/sh</string>
-        <string>__PROJECT_ROOT__/scripts/run_production.sh</string>
+        <string>__PRODUCTION_ROOT__/scripts/run_production.sh</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>__PROJECT_ROOT__</string>
+    <string>__PRODUCTION_ROOT__</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOMEDASH_DATABASE</key>
+        <string>__PRODUCTION_DATA__/heating_data.db</string>
+        <key>HOMEDASH_CONFIG</key>
+        <string>__PRODUCTION_ROOT__/config.ini</string>
+    </dict>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>__PROJECT_ROOT__/data/logs/production.out.log</string>
+    <string>__PRODUCTION_DATA__/logs/production.out.log</string>
     <key>StandardErrorPath</key>
-    <string>__PROJECT_ROOT__/data/logs/production.err.log</string>
+    <string>__PRODUCTION_DATA__/logs/production.err.log</string>
 </dict>
 </plist>

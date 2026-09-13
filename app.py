@@ -600,6 +600,11 @@ def render_climate_chart(
     target = history_frame[["recorded_at", "target_temperature"]].rename(columns={"target_temperature": "value"})
     humidity = history_frame[["recorded_at", "humidity"]].rename(columns={"humidity": "value"})
     valve = history_frame[["recorded_at", "valve_position"]].rename(columns={"valve_position": "value"})
+    current["series"] = "IST"
+    target["series"] = "Ziel"
+    humidity["series"] = "Feuchtigkeit"
+    valve["series"] = "Ventil"
+    line_selection = alt.selection_point(fields=["series"], bind="legend", on="click", clear="dblclick")
     temperature_axis = alt.Axis(title="Temperature (C)", orient="left", titleColor="#0b7285")
     percentage_axis = alt.Axis(title="Humidity / valve (%)", orient="right", titleColor="#7c3aed")
     label_axis = alt.Axis(title=None, labels=False, ticks=False, domain=False)
@@ -613,6 +618,15 @@ def render_climate_chart(
         return alt.Chart(data).mark_line(**mark).encode(
             x=alt.X("recorded_at:T", axis=time_axis, scale=alt.Scale(padding=20)),
             y=alt.Y("value:Q", scale=scale, axis=axis),
+            color=alt.Color(
+                "series:N",
+                scale=alt.Scale(
+                    domain=["IST", "Ziel", "Feuchtigkeit", "Ventil"],
+                    range=["#d9480f", "#64748b", "#7c3aed", "#e03131"],
+                ),
+                legend=alt.Legend(title="Linien"),
+            ),
+            opacity=alt.condition(line_selection, alt.value(1), alt.value(0.08)),
         )
 
     def endpoint_label(data: pd.DataFrame, color: str, fmt: str, scale=None, dy=0):
@@ -628,6 +642,7 @@ def render_climate_chart(
                 x=alt.X("recorded_at:T", scale=alt.Scale(padding=20)),
                 y=alt.Y("value:Q", scale=scale, axis=label_axis),
                 text=alt.Text("value:Q", format=fmt),
+                opacity=alt.condition(line_selection, alt.value(1), alt.value(0.08)),
             )
         )
 
@@ -640,7 +655,11 @@ def render_climate_chart(
         + endpoint_label(target, "#64748b", ".1f", temperature_scale, dy=10)
         + endpoint_label(humidity, "#7c3aed", ".0f", percent_scale, dy=-8)
         + endpoint_label(valve, "#e03131", ".0f", percent_scale, dy=10)
-    ).resolve_scale(y="independent").properties(height=height, title=title, padding={"right": 70, "left": 20})
+    ).resolve_scale(y="independent").add_params(line_selection).properties(
+        height=height,
+        title=title,
+        padding={"right": 70, "left": 20},
+    )
     st.altair_chart(chart, use_container_width=True)
 
 

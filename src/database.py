@@ -2,7 +2,7 @@ import json
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 from src.models import RoomReading
 from src.history import initialize_history
@@ -192,17 +192,24 @@ def get_latest_readings(database_path: Union[str, Path]) -> list[dict[str, objec
     return [dict(row) for row in rows]
 
 
-def get_room_trends(database_path: Union[str, Path], room_name: str) -> dict[str, str]:
-    """Return direction markers for the latest room temperature and humidity."""
+def get_room_trends(
+    database_path: Union[str, Path],
+    room_name: str,
+    window_minutes: int = 30,
+) -> dict[str, str]:
+    """Return direction markers for change observed across the last time window."""
+    if window_minutes <= 0:
+        raise ValueError("window_minutes must be greater than zero")
+
     initialize_database(database_path)
     with sqlite3.connect(database_path) as connection:
         rows = connection.execute(
             """
-            SELECT current_temperature, humidity
+            SELECT current_temperature, humidity, recorded_at
             FROM room_readings
             WHERE room_name = ?
             ORDER BY recorded_at DESC, id DESC
-            LIMIT 24
+            LIMIT 100
             """,
             (room_name,),
         ).fetchall()
@@ -210,14 +217,20 @@ def get_room_trends(database_path: Union[str, Path], room_name: str) -> dict[str
     if len(rows) < 2:
         return {"temperature": "->", "humidity": "->"}
 
-    current = rows[0]
+    now = datetime.now(timezone.utc)
+    parsed_rows = []
+    for row in rows:
+        timestamp = datetime.fromisoformat(row[2])
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
+        parsed_rows.append((timestamp, row[0], row[1]))
+    window_rows = [row for row in parsed_rows if now - timedelta(minutes=window_minutes) <= row[0] <= now]
+    if len(window_rows) < 2:
+        return {"temperature": "->", "humidity": "->"}
 
-    def previous_distinct(index: int) -> Optional[float]:
-        current_value = current[index]
-        for row in rows[1:]:
-            if round(row[index], 1) != round(current_value, 1):
-                return row[index]
-        return None
+    window_rows.sort(key=lambda row: row[0])
+    previous = window_rows[0]
+    current = window_rows[-1]
 
     def direction(current_value: float, previous_value: float, quarter: float, full: float) -> str:
         change = current_value - previous_value
@@ -232,8 +245,8 @@ def get_room_trends(database_path: Union[str, Path], room_name: str) -> dict[str
         return "→"
 
     return {
-        "temperature": direction(current[0], previous_distinct(0) or current[0], quarter=0.1, full=0.5),
-        "humidity": direction(current[1], previous_distinct(1) or current[1], quarter=1.0, full=5.0),
+        "temperature": direction(current[1], previous[1], quarter=0.1, full=0.5),
+        "humidity": direction(current[2], previous[2], quarter=1.0, full=5.0),
     }
 
 

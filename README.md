@@ -4,7 +4,7 @@ A local Python control center for monitoring and understanding your home's heati
 
 HomeClimate Dashboard collects data from a Homematic IP Access Point, with a focus on underfloor heating. It is designed for long-term storage and historical analysis, with enough room to keep at least 12 months of heating data. The architecture is also prepared for a future Viessmann heat pump integration.
 
-The first two milestones are now runnable. The dashboard uses Homematic IP when a local `config.ini` is present and falls back to deterministic mock readings otherwise. Mock mode is still available with `HOMEDASH_PROVIDER=mock`.
+The current build uses Homematic IP when a local `config.ini` is present and falls back to deterministic mock readings otherwise. It provides live room cards, building-level grouping, and a local archive of Homematic state. Mock mode is still available with `HOMEDASH_PROVIDER=mock`.
 
 ## What it does
 
@@ -17,7 +17,7 @@ The first two milestones are now runnable. The dashboard uses Homematic IP when 
 - **Frontend:** Streamlit
 - **Backend:** Python 3, optimized for Apple Silicon and macOS
 - **APIs:** `homematicip` for the Homematic IP Cloud; `PyViCare` is planned for the future Viessmann integration
-- **Storage and analysis:** SQLite and Pandas, with no external database server required
+- **Storage and analysis:** SQLite and JSON snapshots, with no external database server required
 
 ## Getting started
 
@@ -76,7 +76,7 @@ python scripts/collect_snapshot.py --interval 300
 
 Snapshots are stored in the local `homematic_snapshots` SQLite table as JSON values. The HmIP cloud does not expose a historical backfill endpoint through the installed API, so historical coverage starts when collection begins.
 
-The dashboard uses German room labels. `Kitchen` and `Küche` are displayed as `Küche`; `Living Room` and `Wohnzimmer` are displayed as `Wohnzimmer`. Rooms are grouped from the two FALMOT floor-heating controllers: `... - oben` becomes `Obergeschoss`, and `... - unten` becomes `Erdgeschoss`. Manual assignments override controller inference: `Esszimmer` is upstairs and `Vorratsraum` is on the base level. Rooms without a confirmed assignment, including `Schlafzimmer`, appear under `Nicht zugeordnet`.
+The dashboard uses German room labels. `Kitchen` and `Küche` are displayed as `Küche`; `Living Room` and `Wohnzimmer` are displayed as `Wohnzimmer`. Rooms are grouped from the two FALMOT floor-heating controllers: `... - oben` becomes `Obergeschoss`, and `... - unten` becomes `Erdgeschoss`. Manual assignments override controller inference: `Esszimmer` is upstairs and `Vorratsraum` is on the ground floor. Rooms without a confirmed assignment, including `Schlafzimmer`, appear under `Nicht zugeordnet`.
 
 ## Project structure
 
@@ -105,13 +105,13 @@ HomeDash/
 
 - [x] First end-to-end slice with mock readings, SQLite persistence, and Streamlit UI
 - [x] Connect the dashboard to Homematic IP through a real client
-- [x] Group dashboard rooms into base level and upstairs sections
+- [x] Group dashboard rooms into Erdgeschoss and Obergeschoss sections
 - [x] Add a helper for inspecting available Homematic devices and data fields
 - [x] Archive full Homematic snapshots for future history and analysis
+- [x] Add a one-shot and interval-based data collector
 - [ ] Map the remaining rooms to their building levels
-- [ ] Read heating components such as wall thermostats and underfloor heating controllers, then show them live
-- [ ] Add a data logger that writes values to SQLite every minute or hour, using a macOS LaunchDaemon or background loop
-- [ ] Add interactive historical views with Pandas DataFrames and Streamlit line charts
+- [ ] Add interactive historical views with Streamlit charts
+- [ ] Run the collector automatically through a macOS LaunchDaemon
 - [ ] Integrate the Viessmann API through PyViCare to track flow temperature, return temperature, and compressor status for the Vitocal 250-A
 - [ ] Analyze correlations, such as how an open kitchen heating circuit affects the heat pump's flow temperature
 - [ ] Extend the architecture to support more Homematic IP sensors and actuators

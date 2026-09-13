@@ -632,12 +632,12 @@ def render_climate_chart(
         )
 
     chart = (
-        line(current, "#0b7285", scale=temperature_scale, axis=temperature_axis, points=len(history_frame) <= 72)
-        + line(target, "#f08c00", dash=[6, 3], scale=temperature_scale, axis=label_axis)
+        line(current, "#d9480f", scale=temperature_scale, axis=temperature_axis, points=len(history_frame) <= 72)
+        + line(target, "#94a3b8", dash=[6, 3], scale=temperature_scale, axis=label_axis)
         + line(humidity, "#7c3aed", dash=[2, 2], scale=percent_scale, axis=percentage_axis)
         + line(valve, "#e03131", dash=[2, 2], scale=percent_scale, axis=label_axis)
-        + endpoint_label(current, "#0b7285", ".1f", temperature_scale, dy=-8)
-        + endpoint_label(target, "#f08c00", ".1f", temperature_scale, dy=10)
+        + endpoint_label(current, "#d9480f", ".1f", temperature_scale, dy=-8)
+        + endpoint_label(target, "#64748b", ".1f", temperature_scale, dy=10)
         + endpoint_label(humidity, "#7c3aed", ".0f", percent_scale, dy=-8)
         + endpoint_label(valve, "#e03131", ".0f", percent_scale, dy=10)
     ).resolve_scale(y="independent").properties(height=height, title=title, padding={"right": 70, "left": 20})
@@ -648,8 +648,8 @@ def render_chart_legend() -> None:
     st.markdown(
         '<div style="color:#486581;font-size:0.78rem;margin:0.35rem 0 0.75rem;">'
         '<strong>Legende:</strong> '
-        '<span style="color:#0b7285">&#9644; IST-Temperatur</span> &nbsp; '
-        '<span style="color:#f08c00">- - Zieltemperatur</span> &nbsp; '
+        '<span style="color:#d9480f;font-weight:700">&#9644; IST-Temperatur</span> &nbsp; '
+        '<span style="color:#64748b">- - Zieltemperatur</span> &nbsp; '
         '<span style="color:#7c3aed">·· Feuchtigkeit</span> &nbsp; '
         '<span style="color:#e03131">·· Ventil</span>'
         '</div>',

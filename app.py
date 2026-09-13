@@ -264,6 +264,13 @@ st.markdown(
                     line-height: 1;
                 }
 
+                [class*="st-key-overview-room-"] button p:first-child {
+                    color: #102a43;
+                    font-size: 1.8rem;
+                    font-weight: 800;
+                    line-height: 1.05;
+                }
+
                 [class*="st-key-function-navigation"] {
                     min-width: 190px;
                 }
@@ -328,7 +335,7 @@ def render_device_hierarchy(home: object) -> None:
 header_actions = st.columns([6, 2, 3])
 with header_actions[0]:
     st.markdown(
-        f'<div class="dashboard-header"><h1>HomeClimate Dashboard</h1><p>Data provider: {escape(PROVIDER)}</p></div>',
+        '<div class="dashboard-header"><h1>HomeClimate Dashboard</h1></div>',
         unsafe_allow_html=True,
     )
 with header_actions[1]:
@@ -444,8 +451,8 @@ def render_overview() -> None:
             room_name = str(reading["room_name"])
             valve = float(reading["valve_position"])
             label = (
-                f"**{room_name}**\n\n"
-                f"{float(reading['current_temperature']):.1f} C  |  Target {float(reading['target_temperature']):.1f} C\n\n"
+                f"**{float(reading['current_temperature']):.1f} C**\n\n"
+                f"**{room_name}**  |  Target {float(reading['target_temperature']):.1f} C\n\n"
                 f"Humidity {float(reading['humidity']):.0f}%  |  Valve {valve:.0f}%"
             )
             with columns[index % len(columns)]:
@@ -455,6 +462,7 @@ def render_overview() -> None:
                     st.query_params["room"] = room_name
                     st.query_params["view"] = "detail"
                     st.rerun()
+    st.caption(f"Data provider: {PROVIDER}")
 
 
 def render_overview_graphs() -> None:
@@ -688,3 +696,5 @@ with st.expander("Show latest readings table"):
             "recorded_at": "Recorded at",
         },
     )
+
+st.caption(f"Data provider: {PROVIDER}")

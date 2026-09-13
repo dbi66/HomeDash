@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -17,6 +18,26 @@ def backup_database(database_path: Union[str, Path], backup_path: Union[str, Pat
         with sqlite3.connect(destination) as backup_connection:
             source_connection.backup(backup_connection)
     return destination
+
+
+def save_viessmann_snapshots(database_path: Union[str, Path], inventory: list[dict[str, object]]) -> int:
+    initialize_database(database_path)
+    recorded_at = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(database_path) as connection:
+        connection.executemany(
+            "INSERT INTO viessmann_snapshots (recorded_at, device_id, model, online, features_json) VALUES (?, ?, ?, ?, ?)",
+            [
+                (
+                    recorded_at,
+                    str(device["id"]),
+                    str(device["model"]),
+                    int(bool(device["online"])),
+                    json.dumps(device["features"], ensure_ascii=False, sort_keys=True, default=str),
+                )
+                for device in inventory
+            ],
+        )
+    return len(inventory)
 
 
 SCHEMA = """
@@ -48,6 +69,16 @@ CREATE TABLE IF NOT EXISTS room_events (
 );
 CREATE INDEX IF NOT EXISTS idx_room_events_room_time
     ON room_events (room_name, recorded_at DESC);
+CREATE TABLE IF NOT EXISTS viessmann_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recorded_at TEXT NOT NULL,
+    device_id TEXT NOT NULL,
+    model TEXT NOT NULL,
+    online INTEGER NOT NULL,
+    features_json TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_viessmann_snapshots_time
+    ON viessmann_snapshots (recorded_at DESC);
 """
 
 

@@ -1,3 +1,4 @@
 streamlit>=1.40,<2
 homematicip>=1.1,<2
 pandas>=2.0,<3
+PyViCare>=2.54,<3

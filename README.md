@@ -22,6 +22,7 @@ The app is read-only with respect to heating settings. It reports target tempera
   - Humidity and valve position: `0-100%`
   - Optional `Fit data` mode
 - Homematic device and channel hierarchy in `Einstellungen`
+- Read-only Viessmann inventory for installations, gateways, devices, and exposed feature names
 - Local or trusted-network access through the dashboard launcher
 - SQLite history for room readings, events, target reports, and Homematic snapshots
 
@@ -32,10 +33,23 @@ The top navigation provides:
 - `Home`: room overview only
 - `Raumdetail`: selected room history, charts, and event log
 - `Alle Diagramme`: compact historical charts for all rooms
-- `Einstellungen`: reread Homematic devices and inspect the device/channel hierarchy
+- `Einstellungen`: reread Homematic devices, inspect the device/channel hierarchy, and load Viessmann data
 - `Refresh`: fetch and archive current readings
 
 Click a room tile from `Home` to open its detail view.
+
+### Viessmann read-only inventory
+
+Installations with a Vitocal/Vitocell system can be inspected through PyViCare. Configure credentials only through local environment variables:
+
+```bash
+export VIESSMANN_USERNAME="your-account-email"
+export VIESSMANN_PASSWORD="your-account-password"
+export VIESSMANN_CLIENT_ID="your-api-client-id"
+export VIESSMANN_TOKEN_FILE="data/vicare_token.json"
+```
+
+Then open `Einstellungen` and choose `Viessmann-Daten einlesen`. The integration archives the complete feature inventory in `viessmann_snapshots` and never changes heating settings. Credentials and the token file remain local.
 
 ## Requirements
 
@@ -169,6 +183,7 @@ HOMEDASH_DATABASE=/path/to/heating_data.db streamlit run app.py
 - `homematic_snapshots`: deduplicated device, channel, and group snapshots stored as JSON
 - `room_events`: valve opening/closing and externally observed target-temperature changes
 - `target_changes`: retained for compatibility with earlier versions; the current app does not write target temperatures
+- `viessmann_snapshots`: read-only Viessmann feature inventories stored as JSON
 
 ## Project Structure
 

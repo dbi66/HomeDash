@@ -9,3 +9,4 @@ data/*.db
 data/backups/
 .env
 config.ini
+data/vicare_token.json

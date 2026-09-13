@@ -5,12 +5,13 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from src.database import get_latest_readings, get_room_events, get_room_history, get_room_trends, save_readings
+from src.database import get_latest_readings, get_room_events, get_room_history, get_room_trends, save_readings, save_viessmann_snapshots
 from src.config import DATABASE_PATH, PROVIDER
 from src.history import save_home_snapshot
 from src.hmip_provider import HomematicProviderError, load_home, get_room_readings as get_hmip_readings, map_room_readings
 from src.mock_provider import get_room_readings
 from src.room_layout import BASE_LEVEL, UNASSIGNED, UPSTAIRS, group_readings_by_level
+from src.viessmann_provider import ViessmannProviderError, read_all_information
 
 
 st.set_page_config(page_title="HomeClimate Dashboard", page_icon=":house:", layout="wide")
@@ -348,6 +349,30 @@ def render_device_hierarchy(home: object) -> None:
     st.markdown(tree, unsafe_allow_html=True)
 
 
+def render_viessmann_inventory(inventory: list[dict[str, object]]) -> None:
+    st.caption(f"{len(inventory)} Viessmann device(s)")
+    for device in inventory:
+        features = device.get("features", {})
+        feature_rows = features.get("data", []) if isinstance(features, dict) else []
+        with st.expander(f"{device['model']} | {device['id']} | {'online' if device['online'] else 'offline'}"):
+            if not feature_rows:
+                st.json(features)
+                continue
+            rows = []
+            for feature in feature_rows:
+                if isinstance(feature, dict):
+                    rows.append(
+                        {
+                            "feature": feature.get("feature", ""),
+                            "properties": ", ".join(sorted(feature.get("properties", {}).keys())),
+                        }
+                    )
+            if rows:
+                st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+            else:
+                st.json(features)
+
+
 header_actions = st.columns([6, 2, 3])
 with header_actions[0]:
     st.markdown(
@@ -434,6 +459,18 @@ if st.session_state.get("show_settings", False):
                 st.info("Lese zuerst die Homematic IP Geraete ein.")
             else:
                 render_device_hierarchy(device_home)
+
+        if st.button("Viessmann-Daten einlesen"):
+            try:
+                inventory = read_all_information()
+                save_viessmann_snapshots(DATABASE_PATH, inventory)
+                st.session_state["viessmann_inventory"] = inventory
+                st.success("Viessmann-Daten wurden read-only eingelesen und archiviert.")
+            except ViessmannProviderError as error:
+                st.error(str(error))
+
+        if st.session_state.get("viessmann_inventory"):
+            render_viessmann_inventory(st.session_state["viessmann_inventory"])
 
 try:
     readings = load_readings()

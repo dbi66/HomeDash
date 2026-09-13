@@ -6,7 +6,7 @@ from typing import Iterable, Optional, Union
 from homematicip.home import Home
 
 from src.models import RoomReading
-from src.room_layout import level_from_controller_devices, canonical_room_name
+from src.room_layout import ROOM_LEVELS, canonical_room_name, level_from_controller_devices
 
 
 CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.ini"
@@ -48,7 +48,7 @@ def map_room_readings(home: Home) -> list[RoomReading]:
     for group in _room_groups(home):
         room_name = canonical_room_name(getattr(group, "label", None) or "Unnamed room")
         devices = getattr(group, "devices", [])
-        level = level_from_controller_devices(devices)
+        level = ROOM_LEVELS.get(room_name, level_from_controller_devices(devices))
         grouped_devices.setdefault((room_name, level), []).extend(devices)
 
     for (room_name, level), devices in grouped_devices.items():

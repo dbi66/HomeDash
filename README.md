@@ -62,7 +62,7 @@ To inspect the data exposed by the Homematic system without printing credentials
 python scripts/inspect_homematic.py
 ```
 
-The dashboard uses German room labels. `Kitchen` and `Küche` are displayed as `Küche`; `Living Room` and `Wohnzimmer` are displayed as `Wohnzimmer`. Rooms are grouped from the two FALMOT floor-heating controllers: `... - oben` becomes `Obergeschoss`, and `... - unten` becomes `Erdgeschoss`. Rooms without a controller assignment appear under `Nicht zugeordnet`.
+The dashboard uses German room labels. `Kitchen` and `Küche` are displayed as `Küche`; `Living Room` and `Wohnzimmer` are displayed as `Wohnzimmer`. Rooms are grouped from the two FALMOT floor-heating controllers: `... - oben` becomes `Obergeschoss`, and `... - unten` becomes `Erdgeschoss`. Manual assignments override controller inference: `Esszimmer` is upstairs and `Vorratsraum` is on the base level. Rooms without a confirmed assignment, including `Schlafzimmer`, appear under `Nicht zugeordnet`.
 
 ## Project structure
 

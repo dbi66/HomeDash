@@ -8,6 +8,8 @@ UNASSIGNED = "Nicht zugeordnet"
 
 ROOM_LEVELS = {
     "Arbeit Dennis": BASE_LEVEL,
+    "Esszimmer": UPSTAIRS,
+    "Vorratsraum": BASE_LEVEL,
     "Wohnzimmer": UPSTAIRS,
 }
 

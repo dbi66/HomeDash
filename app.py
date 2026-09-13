@@ -432,9 +432,10 @@ else:
     st.session_state["show_all_graphs"] = False
     st.session_state["show_settings"] = True
 
-if st.session_state.get("show_settings", False):
-    with st.container(border=True):
-        st.markdown("### Einstellungen")
+@st.dialog("Einstellungen")
+def settings_dialog() -> None:
+    homematic_tab, viessmann_tab = st.tabs(["Homematic IP", "Viessmann"])
+    with homematic_tab:
         if st.button("Homematic IP Geraete neu einlesen", type="primary"):
             try:
                 st.session_state["device_home"] = load_home()
@@ -451,7 +452,6 @@ if st.session_state.get("show_settings", False):
             st.session_state["show_device_hierarchy"] = not st.session_state.get(
                 "show_device_hierarchy", False
             )
-            st.rerun()
 
         if st.session_state.get("show_device_hierarchy", False):
             device_home = st.session_state.get("device_home")
@@ -460,9 +460,22 @@ if st.session_state.get("show_settings", False):
             else:
                 render_device_hierarchy(device_home)
 
-        if st.button("Viessmann-Daten einlesen"):
+    with viessmann_tab:
+        st.caption("Read-only access. Credentials are held in this browser session only.")
+        with st.form("viessmann-settings-form"):
+            username = st.text_input("Viessmann account email", key="viessmann-username")
+            password = st.text_input("Viessmann account password", type="password", key="viessmann-password")
+            client_id = st.text_input("Viessmann API client ID", key="viessmann-client-id")
+            token_file = st.text_input(
+                "Token file",
+                value="data/vicare_token.json",
+                key="viessmann-token-file",
+            )
+            load_viessmann = st.form_submit_button("Viessmann-Daten einlesen", type="primary")
+
+        if load_viessmann:
             try:
-                inventory = read_all_information()
+                inventory = read_all_information(username, password, client_id, token_file)
                 save_viessmann_snapshots(DATABASE_PATH, inventory)
                 st.session_state["viessmann_inventory"] = inventory
                 st.success("Viessmann-Daten wurden read-only eingelesen und archiviert.")
@@ -471,6 +484,10 @@ if st.session_state.get("show_settings", False):
 
         if st.session_state.get("viessmann_inventory"):
             render_viessmann_inventory(st.session_state["viessmann_inventory"])
+
+
+if st.session_state.get("show_settings", False):
+    settings_dialog()
 
 try:
     readings = load_readings()

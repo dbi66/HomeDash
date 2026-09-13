@@ -8,11 +8,16 @@ class ViessmannProviderError(RuntimeError):
     """Raised when Viessmann data cannot be loaded."""
 
 
-def _credentials() -> tuple[str, str, str, str]:
-    username = os.getenv("VIESSMANN_USERNAME", "")
-    password = os.getenv("VIESSMANN_PASSWORD", "")
-    client_id = os.getenv("VIESSMANN_CLIENT_ID", "")
-    token_file = os.getenv("VIESSMANN_TOKEN_FILE", "data/vicare_token.json")
+def _credentials(
+    username: str = "",
+    password: str = "",
+    client_id: str = "",
+    token_file: str = "",
+) -> tuple[str, str, str, str]:
+    username = username or os.getenv("VIESSMANN_USERNAME", "")
+    password = password or os.getenv("VIESSMANN_PASSWORD", "")
+    client_id = client_id or os.getenv("VIESSMANN_CLIENT_ID", "")
+    token_file = token_file or os.getenv("VIESSMANN_TOKEN_FILE", "data/vicare_token.json")
     if not username or not password or not client_id:
         raise ViessmannProviderError(
             "Set VIESSMANN_USERNAME, VIESSMANN_PASSWORD, and VIESSMANN_CLIENT_ID locally."
@@ -20,13 +25,18 @@ def _credentials() -> tuple[str, str, str, str]:
     return username, password, client_id, token_file
 
 
-def load_client() -> Any:
+def load_client(
+    username: str = "",
+    password: str = "",
+    client_id: str = "",
+    token_file: str = "",
+) -> Any:
     try:
         from PyViCare.PyViCare import PyViCare
     except ImportError as error:
         raise ViessmannProviderError("PyViCare is not installed") from error
 
-    username, password, client_id, token_file = _credentials()
+    username, password, client_id, token_file = _credentials(username, password, client_id, token_file)
     client = PyViCare()
     try:
         client.initWithCredentials(username, password, client_id, token_file)
@@ -63,5 +73,10 @@ def read_inventory(client: Any) -> list[dict[str, Any]]:
     return inventory
 
 
-def read_all_information() -> list[dict[str, Any]]:
-    return read_inventory(load_client())
+def read_all_information(
+    username: str = "",
+    password: str = "",
+    client_id: str = "",
+    token_file: str = "",
+) -> list[dict[str, Any]]:
+    return read_inventory(load_client(username, password, client_id, token_file))

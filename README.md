@@ -40,7 +40,7 @@ Click a room tile from `Home` to open its detail view.
 
 ### Viessmann read-only inventory
 
-Installations with a Vitocal/Vitocell system can be inspected through PyViCare. Configure credentials only through local environment variables:
+Installations with a Vitocal/Vitocell system can be inspected through PyViCare. Open `Einstellungen`, select the `Viessmann` tab, and enter the account email, password, API client ID, and token-file path:
 
 ```bash
 export VIESSMANN_USERNAME="your-account-email"
@@ -49,7 +49,7 @@ export VIESSMANN_CLIENT_ID="your-api-client-id"
 export VIESSMANN_TOKEN_FILE="data/vicare_token.json"
 ```
 
-Then open `Einstellungen` and choose `Viessmann-Daten einlesen`. The integration archives the complete feature inventory in `viessmann_snapshots` and never changes heating settings. Credentials and the token file remain local.
+Choose `Viessmann-Daten einlesen` to archive the complete feature inventory in `viessmann_snapshots`. The fields are held in the current Streamlit session only, the integration never changes heating settings, and the token file remains local. Environment variables remain available for unattended use.
 
 ## Requirements
 

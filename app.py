@@ -2,9 +2,10 @@ from pathlib import Path
 import os
 from html import escape
 
+import pandas as pd
 import streamlit as st
 
-from src.database import get_latest_readings, save_readings
+from src.database import get_latest_readings, get_room_history, save_readings
 from src.history import save_home_snapshot
 from src.hmip_provider import CONFIG_PATH, HomematicProviderError, load_home, get_room_readings as get_hmip_readings, map_room_readings
 from src.mock_provider import get_room_readings
@@ -112,8 +113,60 @@ st.markdown(
         }
 
         @media (max-width: 640px) {
+            .block-container {
+                padding: 1rem 0.75rem 2rem;
+            }
+
+            .dashboard-header h1 {
+                font-size: 1.6rem;
+            }
+
             .room-grid {
-                grid-template-columns: 1fr;
+                gap: 0.5rem;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                margin: 0.75rem 0 1.25rem;
+            }
+
+            .level-heading {
+                font-size: 1.1rem;
+                margin-top: 1.2rem;
+            }
+
+            .room-card {
+                border-radius: 8px;
+                min-height: 126px;
+                padding: 0.65rem;
+            }
+
+            .room-card__name {
+                font-size: 0.78rem;
+            }
+
+            .room-card__status {
+                font-size: 0.55rem;
+            }
+
+            .room-card__reading {
+                margin: 0.8rem 0 0.65rem;
+            }
+
+            .room-card__temperature {
+                font-size: 1.35rem;
+            }
+
+            .room-card__target {
+                font-size: 0.62rem;
+            }
+
+            .room-card__meta {
+                display: grid;
+                font-size: 0.62rem;
+                gap: 0.25rem;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .room-card__meta span {
+                white-space: nowrap;
             }
         }
     </style>
@@ -220,4 +273,33 @@ with st.expander("Show latest readings table"):
             "valve_position": st.column_config.NumberColumn("Valve (%)", format="%.0f"),
             "recorded_at": "Recorded at",
         },
+    )
+
+st.markdown(
+    '<div style="color:#102a43;font-size:1.35rem;font-weight:750;margin:1.75rem 0 0.25rem;">History</div>',
+    unsafe_allow_html=True,
+)
+room_names = sorted({str(reading["room_name"]) for reading in readings})
+history_room = st.selectbox("Room", room_names)
+history_window = st.selectbox(
+    "Time range",
+    options=(24, 168, 720),
+    format_func=lambda hours: {24: "Last 24 hours", 168: "Last 7 days", 720: "Last 30 days"}[hours],
+)
+history = get_room_history(DATABASE_PATH, history_room, history_window)
+if len(history) < 2:
+    st.info("Not enough snapshots for a trend yet. Keep the collector running to build history.")
+else:
+    history_frame = pd.DataFrame(history)
+    history_frame["recorded_at"] = pd.to_datetime(history_frame["recorded_at"], utc=True)
+    history_frame = history_frame.set_index("recorded_at")
+    st.line_chart(
+        history_frame[["current_temperature", "target_temperature"]],
+        height=240,
+        y_label="Temperature (C)",
+    )
+    st.line_chart(
+        history_frame[["valve_position", "humidity"]],
+        height=220,
+        y_label="Percent",
     )

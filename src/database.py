@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Union
 
@@ -97,5 +98,30 @@ def get_latest_readings(database_path: Union[str, Path]) -> list[dict[str, objec
             WHERE row_number = 1
             ORDER BY room_name
             """
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def get_room_history(
+    database_path: Union[str, Path],
+    room_name: str,
+    hours: int,
+) -> list[dict[str, object]]:
+    if hours <= 0:
+        raise ValueError("hours must be greater than zero")
+
+    initialize_database(database_path)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    with sqlite3.connect(database_path) as connection:
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(
+            """
+            SELECT recorded_at, current_temperature, target_temperature,
+                   humidity, valve_position
+            FROM room_readings
+            WHERE room_name = ? AND recorded_at >= ?
+            ORDER BY recorded_at
+            """,
+            (room_name, cutoff.isoformat()),
         ).fetchall()
     return [dict(row) for row in rows]

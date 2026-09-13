@@ -54,6 +54,18 @@ The dashboard starts at `http://localhost:8501`. With Homematic IP configured, u
 HOMEDASH_PROVIDER=mock streamlit run app.py
 ```
 
+### Remote access
+
+The default server is local-only. To make the dashboard reachable from another device on a trusted home network or VPN:
+
+```bash
+HOMEDASH_BIND=0.0.0.0 HOMEDASH_PORT=8501 sh scripts/run_dashboard.sh
+```
+
+Find the Mac's LAN address with `ipconfig getifaddr en0`, then open `http://<mac-address>:8501` on the other device. The launcher does not add authentication or HTTPS, so do not expose this server directly to the public internet.
+
+The room cards automatically switch to a compact two-column layout on narrow iPhone-sized screens.
+
 Keep `config.ini` local. It contains the Homematic IP auth token and is excluded from Git.
 
 To inspect the data exposed by the Homematic system without printing credentials, run:
@@ -96,7 +108,8 @@ HomeDash/
 |-- scripts/
 |   |-- collect_snapshot.py # Historical snapshot collector
 |   |-- init_db.py         # Database initialization script
-|   `-- inspect_homematic.py # Homematic data inventory helper
+|   |-- inspect_homematic.py # Homematic data inventory helper
+|   `-- run_dashboard.sh    # Local or LAN Streamlit launcher
 |-- requirements.txt       # Project dependencies
 `-- README.md
 ```
@@ -109,8 +122,10 @@ HomeDash/
 - [x] Add a helper for inspecting available Homematic devices and data fields
 - [x] Archive full Homematic snapshots for future history and analysis
 - [x] Add a one-shot and interval-based data collector
+- [x] Add selectable historical temperature and valve charts
+- [x] Add a compact mobile dashboard layout
+- [x] Add a configurable local/LAN web server launcher
 - [ ] Map the remaining rooms to their building levels
-- [ ] Add interactive historical views with Streamlit charts
 - [ ] Run the collector automatically through a macOS LaunchDaemon
 - [ ] Integrate the Viessmann API through PyViCare to track flow temperature, return temperature, and compressor status for the Vitocal 250-A
 - [ ] Analyze correlations, such as how an open kitchen heating circuit affects the heat pump's flow temperature

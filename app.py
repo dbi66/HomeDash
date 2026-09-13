@@ -658,6 +658,25 @@ def render_history(room_name: str) -> None:
                 alt.Tooltip("temperature:Q", title="C", format=".1f"),
             ],
         ).properties(height=220)
+        percentage_data = history_frame.reset_index().melt(
+            id_vars="recorded_at",
+            value_vars=["humidity", "valve_position"],
+            var_name="series",
+            value_name="percent",
+        )
+        percentage_overlay = alt.Chart(percentage_data).mark_line(
+            strokeDash=[4, 3],
+            opacity=0.75,
+        ).encode(
+            x="recorded_at:T",
+            y=alt.Y("percent:Q", title="Percent", scale=percent_scale),
+            color=alt.Color("series:N", title=None),
+            tooltip=[
+                alt.Tooltip("recorded_at:T", title="Time", format="%H:%M"),
+                alt.Tooltip("series:N", title="Series"),
+                alt.Tooltip("percent:Q", title="%", format=".0f"),
+            ],
+        )
         temperature_labels = (
             alt.Chart(temperature_data)
             .transform_window(
@@ -674,7 +693,10 @@ def render_history(room_name: str) -> None:
                 color=alt.Color("series:N", title=None),
             )
         )
-        st.altair_chart(temperature_chart + temperature_labels, use_container_width=True)
+        st.altair_chart(
+            (temperature_chart + temperature_labels + percentage_overlay).resolve_scale(y="independent"),
+            use_container_width=True,
+        )
     with chart_columns[1]:
         percent_data = history_frame.reset_index().melt(
             id_vars="recorded_at",

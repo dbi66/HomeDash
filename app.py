@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 from html import escape
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -183,7 +184,7 @@ st.markdown(
             }
 
                 .stButton button[kind="secondary"] {
-                    min-height: 112px;
+                    min-height: 96px;
                     padding: 0.65rem;
                 }
         }
@@ -193,14 +194,14 @@ st.markdown(
                 border: 1px solid rgba(16, 42, 67, 0.12);
                 border-radius: 10px;
                 color: #102a43;
-                min-height: 128px;
+                min-height: 96px;
                 text-align: left;
                 white-space: pre-wrap;
             }
 
             .stButton button[kind="secondary"] p {
-                font-size: 0.86rem;
-                line-height: 1.55;
+                font-size: 0.78rem;
+                line-height: 1.35;
             }
     </style>
     """,
@@ -255,9 +256,81 @@ if not readings:
     st.stop()
 
 room_names = sorted({str(reading["room_name"]) for reading in readings})
-selected_room = st.session_state.get("selected_room", room_names[0])
+query_room = st.query_params.get("room")
+selected_room = query_room or st.session_state.get("selected_room", room_names[0])
 if selected_room not in room_names:
     selected_room = room_names[0]
+st.session_state["selected_room"] = selected_room
+
+
+def render_history(room_name: str) -> None:
+    st.markdown(
+        f'<div style="color:#102a43;font-size:1.35rem;font-weight:750;margin:0.5rem 0 0.25rem;">History: {escape(room_name)}</div>',
+        unsafe_allow_html=True,
+    )
+    history_window = st.selectbox(
+        "Time range",
+        options=(24, 168, 720),
+        format_func=lambda hours: {24: "Last 24 hours", 168: "Last 7 days", 720: "Last 30 days"}[hours],
+    )
+    history = get_room_history(DATABASE_PATH, room_name, history_window)
+    if len(history) < 2:
+        st.info("Not enough snapshots for a trend yet. Keep the collector running to build history.")
+        return
+
+    history_frame = pd.DataFrame(history)
+    history_frame["recorded_at"] = pd.to_datetime(history_frame["recorded_at"], utc=True)
+    history_frame = history_frame.set_index("recorded_at")
+    time_axis = alt.Axis(format="%H:%M", title=None)
+    chart_columns = st.columns(2)
+    with chart_columns[0]:
+        temperature_data = history_frame.reset_index().melt(
+            id_vars="recorded_at",
+            value_vars=["current_temperature", "target_temperature"],
+            var_name="series",
+            value_name="temperature",
+        )
+        temperature_chart = alt.Chart(temperature_data).mark_line().encode(
+            x=alt.X("recorded_at:T", axis=time_axis),
+            y=alt.Y("temperature:Q", title="Temperature (C)"),
+            color=alt.Color("series:N", title=None),
+            tooltip=[
+                alt.Tooltip("recorded_at:T", title="Time", format="%H:%M"),
+                alt.Tooltip("series:N", title="Series"),
+                alt.Tooltip("temperature:Q", title="C", format=".1f"),
+            ],
+        ).properties(height=220)
+        st.altair_chart(temperature_chart, use_container_width=True)
+    with chart_columns[1]:
+        percent_data = history_frame.reset_index().melt(
+            id_vars="recorded_at",
+            value_vars=["valve_position", "humidity"],
+            var_name="series",
+            value_name="percent",
+        )
+        percent_chart = alt.Chart(percent_data).mark_line().encode(
+            x=alt.X("recorded_at:T", axis=time_axis),
+            y=alt.Y("percent:Q", title="Percent"),
+            color=alt.Color("series:N", title=None),
+            tooltip=[
+                alt.Tooltip("recorded_at:T", title="Time", format="%H:%M"),
+                alt.Tooltip("series:N", title="Series"),
+                alt.Tooltip("percent:Q", title="%", format=".0f"),
+            ],
+        ).properties(height=220)
+        st.altair_chart(percent_chart, use_container_width=True)
+
+
+with st.container(border=True):
+    history_room = st.selectbox("Selected room", room_names, index=room_names.index(selected_room))
+    if history_room != selected_room:
+        selected_room = history_room
+        st.session_state["selected_room"] = selected_room
+        st.query_params["room"] = selected_room
+        st.rerun()
+    else:
+        st.query_params["room"] = selected_room
+    render_history(selected_room)
 
 def valve_color(valve_position: float) -> str:
     if valve_position <= 0:
@@ -270,7 +343,7 @@ def valve_color(valve_position: float) -> str:
 
 
 def render_room_tiles(level_readings: list[dict[str, object]]) -> None:
-    columns = st.columns(min(2, len(level_readings)))
+    columns = st.columns(min(4, len(level_readings)))
     for index, reading in enumerate(level_readings):
         room_name = escape(str(reading["room_name"]))
         valve_position = float(reading["valve_position"])
@@ -289,6 +362,7 @@ def render_room_tiles(level_readings: list[dict[str, object]]) -> None:
                 type="secondary",
             ):
                 st.session_state["selected_room"] = str(reading["room_name"])
+                st.query_params["room"] = str(reading["room_name"])
                 st.rerun()
 
 
@@ -315,33 +389,4 @@ with st.expander("Show latest readings table"):
             "valve_position": st.column_config.NumberColumn("Valve (%)", format="%.0f"),
             "recorded_at": "Recorded at",
         },
-    )
-
-st.markdown(
-    f'<div style="color:#102a43;font-size:1.35rem;font-weight:750;margin:1.75rem 0 0.25rem;">History: {escape(selected_room)}</div>',
-    unsafe_allow_html=True,
-)
-history_room = st.selectbox("Selected room", room_names, index=room_names.index(selected_room))
-st.session_state["selected_room"] = history_room
-history_window = st.selectbox(
-    "Time range",
-    options=(24, 168, 720),
-    format_func=lambda hours: {24: "Last 24 hours", 168: "Last 7 days", 720: "Last 30 days"}[hours],
-)
-history = get_room_history(DATABASE_PATH, history_room, history_window)
-if len(history) < 2:
-    st.info("Not enough snapshots for a trend yet. Keep the collector running to build history.")
-else:
-    history_frame = pd.DataFrame(history)
-    history_frame["recorded_at"] = pd.to_datetime(history_frame["recorded_at"], utc=True)
-    history_frame = history_frame.set_index("recorded_at")
-    st.line_chart(
-        history_frame[["current_temperature", "target_temperature"]],
-        height=240,
-        y_label="Temperature (C)",
-    )
-    st.line_chart(
-        history_frame[["valve_position", "humidity"]],
-        height=220,
-        y_label="Percent",
     )

@@ -6,7 +6,7 @@ from typing import Callable, Optional, Union
 import pandas as pd
 import streamlit as st
 
-from src.charts import render_climate_chart
+from src.charts import render_climate_chart, render_spider_chart
 from src.database import get_room_history, get_room_trends
 from src.room_layout import BASE_LEVEL, UNASSIGNED, UPSTAIRS, group_readings_by_level
 
@@ -121,6 +121,30 @@ def render_overview_graphs(room_names: list[str], database_path: Union[str, Path
             continue
         with graph_columns[index % 2]:
             render_climate_chart(pd.DataFrame(history), room_name, 180, "Fixed range", "all")
+
+
+def render_room_report(readings: list[Reading]) -> None:
+    st.markdown('<div class="level-heading">Raumbericht</div>', unsafe_allow_html=True)
+    st.caption("Aktuelle Raumwerte im Vergleich.")
+    chart_columns = st.columns(2)
+    with chart_columns[0]:
+        render_spider_chart(
+            readings,
+            value_key="current_temperature",
+            title="IST-Temperatur (C)",
+            domain=(10.0, 30.0),
+            color="#d9480f",
+            key="room-report-temperature",
+        )
+    with chart_columns[1]:
+        render_spider_chart(
+            readings,
+            value_key="humidity",
+            title="Feuchtigkeit (%)",
+            domain=(0.0, 100.0),
+            color="#7c3aed",
+            key="room-report-humidity",
+        )
 
 
 def render_history(room_name: str, database_path: Union[str, Path]) -> None:

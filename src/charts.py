@@ -1,3 +1,4 @@
+import math
 import re
 from typing import Optional
 
@@ -75,7 +76,106 @@ def render_climate_chart(
         title=title,
         padding={"right": 70, "left": 20},
     )
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, width="stretch")
+
+
+def render_spider_chart(
+    readings: list[dict[str, object]],
+    value_key: str,
+    title: str,
+    domain: tuple[float, float],
+    color: str,
+    key: str,
+) -> None:
+    if not readings:
+        st.info(f"Keine Daten für {title} verfügbar.")
+        return
+
+    minimum, maximum = domain
+    span = maximum - minimum
+    angle_step = 2 * math.pi / len(readings)
+    polygon = []
+    labels = []
+    spokes = []
+    rings = []
+    for index, reading in enumerate(readings):
+        angle = index * angle_step - math.pi / 2
+        value = float(reading[value_key])
+        normalized = max(0.0, min(1.0, (value - minimum) / span))
+        polygon.append(
+            {
+                "x": normalized * math.cos(angle),
+                "y": normalized * math.sin(angle),
+                "series": "value",
+                "order": index,
+            }
+        )
+        labels.append(
+            {
+                "x": 1.12 * math.cos(angle),
+                "y": 1.12 * math.sin(angle),
+                "room_name": str(reading["room_name"]),
+            }
+        )
+        spokes.extend(
+            [
+                {"x": 0.0, "y": 0.0, "spoke": index},
+                {"x": math.cos(angle), "y": math.sin(angle), "spoke": index, "order": 1},
+            ]
+        )
+        spokes[-2]["order"] = 0
+
+    polygon.append(polygon[0])
+    for ring_level in (0.25, 0.5, 0.75, 1.0):
+        for point_index in range(41):
+            angle = 2 * math.pi * point_index / 40 - math.pi / 2
+            rings.append(
+                {
+                    "x": ring_level * math.cos(angle),
+                    "y": ring_level * math.sin(angle),
+                    "ring": ring_level,
+                    "order": point_index,
+                }
+            )
+
+    chart_data = pd.DataFrame(polygon)
+    ring_data = pd.DataFrame(rings)
+    spoke_data = pd.DataFrame(spokes)
+    label_data = pd.DataFrame(labels)
+    extent = alt.Scale(domain=[-1.25, 1.25])
+    chart = alt.layer(
+        alt.Chart(ring_data).mark_line(color="#d9e2ec", strokeWidth=1).encode(
+            x=alt.X("x:Q", scale=extent, axis=None),
+            y=alt.Y("y:Q", scale=extent, axis=None),
+            detail="ring:N",
+            order="order:Q",
+        ),
+        alt.Chart(spoke_data).mark_line(color="#d9e2ec", strokeWidth=1).encode(
+            x=alt.X("x:Q", scale=extent, axis=None),
+            y=alt.Y("y:Q", scale=extent, axis=None),
+            detail="spoke:N",
+            order="order:Q",
+        ),
+        alt.Chart(chart_data).mark_line(color=color, strokeWidth=3).encode(
+            x=alt.X("x:Q", scale=extent, axis=None),
+            y=alt.Y("y:Q", scale=extent, axis=None),
+            order="order:Q",
+        ),
+        alt.Chart(chart_data).mark_point(color=color, filled=True, size=45).encode(
+            x=alt.X("x:Q", scale=extent, axis=None),
+            y=alt.Y("y:Q", scale=extent, axis=None),
+        ),
+        alt.Chart(label_data).mark_text(fontSize=11, color="#334e68").encode(
+            x=alt.X("x:Q", scale=extent, axis=None),
+            y=alt.Y("y:Q", scale=extent, axis=None),
+            text="room_name:N",
+        ),
+    ).properties(title=title, width="container", height=420, background="#ffffff").configure(
+        background="#ffffff",
+        title=alt.TitleConfig(color="#102a43", fontSize=16, anchor="start"),
+        view=alt.ViewConfig(stroke="#d9e2ec", fill="#ffffff"),
+    )
+    st.altair_chart(chart, width="stretch", key=key)
 
 
 def _selected_series(title: str, key_prefix: str) -> list[str]:

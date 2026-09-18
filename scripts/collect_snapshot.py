@@ -18,6 +18,8 @@ def collect_once(snapshot_interval_minutes: int) -> tuple[int, int]:
     home = load_home()
     recorded_at = datetime.now(timezone.utc)
     room_readings = map_room_readings(home)
+    if not room_readings:
+        raise RuntimeError("No room readings returned")
     save_readings(DATABASE_PATH, room_readings)
     snapshot_count = save_home_snapshot(
         DATABASE_PATH,
@@ -44,6 +46,7 @@ def main() -> int:
     )
     arguments = parser.parse_args()
 
+    next_run = time.monotonic()
     while True:
         try:
             room_count, snapshot_count = collect_once(arguments.snapshot_interval)
@@ -59,7 +62,12 @@ def main() -> int:
 
         if arguments.interval <= 0:
             return 0
-        time.sleep(arguments.interval)
+        next_run += arguments.interval
+        delay = next_run - time.monotonic()
+        if delay > 0:
+            time.sleep(delay)
+        else:
+            next_run = time.monotonic()
 
 
 if __name__ == "__main__":

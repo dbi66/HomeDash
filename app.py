@@ -5,7 +5,7 @@ import streamlit as st
 
 from src.database import get_latest_readings, get_room_events, save_readings, save_viessmann_snapshots
 from src.config import DATABASE_PATH, PROVIDER
-from src.dashboard_views import render_compact_chart, render_history, render_overview, render_overview_graphs, render_room_tiles
+from src.dashboard_views import render_compact_chart, render_history, render_overview, render_overview_graphs, render_room_report, render_room_tiles
 from src.history import save_home_snapshot
 from src.hmip_provider import HomematicProviderError, load_home, get_room_readings as get_hmip_readings, map_room_readings
 from src.mock_provider import get_room_readings
@@ -160,6 +160,11 @@ st.markdown(
             }
 
             [data-testid="stHorizontalBlock"]:has(.dashboard-header) [data-testid="stColumn"] {
+                flex: 0 0 100%;
+                width: 100% !important;
+            }
+
+            [data-testid="stHorizontalBlock"]:has([data-testid="stVegaLiteChart"]) [data-testid="stColumn"] {
                 flex: 0 0 100%;
                 width: 100% !important;
             }
@@ -445,7 +450,10 @@ with header_actions[1]:
         except HomematicProviderError as error:
             st.error(str(error))
 with header_actions[2]:
-    route_hint = "Raumdetail" if st.query_params.get("view") == "detail" else "Home"
+    route_hint = {
+        "detail": "Raumdetail",
+        "report": "Raumbericht",
+    }.get(st.query_params.get("view"), "Home")
     if route_hint == "Raumdetail" and "function-navigation" not in st.session_state:
         st.session_state["function-navigation"] = "Raumdetail"
     if "navigation-last" not in st.session_state:
@@ -465,7 +473,7 @@ with header_actions[2]:
 
     function_choice = st.selectbox(
         "Navigation",
-        options=("Home", "Raumdetail", "Alle Diagramme", "Einstellungen"),
+        options=("Home", "Raumdetail", "Raumbericht", "Alle Diagramme", "Einstellungen"),
         key="function-navigation",
         label_visibility="collapsed",
     )
@@ -489,6 +497,14 @@ elif function_choice == "Raumdetail":
 elif function_choice == "Alle Diagramme":
     st.session_state["show_all_graphs"] = True
     st.session_state["show_settings"] = False
+elif function_choice == "Raumbericht":
+    st.session_state["show_all_graphs"] = False
+    st.session_state["show_settings"] = False
+    if function_choice != previous_choice:
+        st.session_state["view"] = "report"
+        st.query_params.clear()
+        st.query_params["view"] = "report"
+        st.rerun()
 else:
     st.session_state["show_all_graphs"] = False
     st.session_state["show_settings"] = True
@@ -569,6 +585,10 @@ if selected_room not in room_names:
     selected_room = room_names[0]
 st.session_state["selected_room"] = selected_room
 
+
+if page == "report":
+    render_room_report(readings)
+    st.stop()
 
 if page == "overview":
     if st.session_state.get("show_all_graphs", False):

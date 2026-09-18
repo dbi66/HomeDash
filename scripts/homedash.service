@@ -1,0 +1,17 @@
+[Unit]
+Description=HomeDash dashboard and collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/dennis/Developer/HomeDash
+Environment=HOMEDASH_BIND=0.0.0.0
+Environment=HOMEDASH_PORT=8501
+Environment=HOMEDASH_DATABASE=/home/dennis/Developer/HomeDash/data/heating_data.db
+ExecStart=/bin/sh /home/dennis/Developer/HomeDash/scripts/run_dashboard.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

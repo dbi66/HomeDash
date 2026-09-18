@@ -1,6 +1,18 @@
-# HomeClimate Dashboard v0.3
+# HomeClimate Dashboard v0.4
 
 HomeClimate Dashboard is a local Streamlit app for monitoring a Homematic IP heating system. It reads room temperatures, target temperatures, humidity, and underfloor-heating valve positions from a Homematic IP Access Point such as the HmIP-HAP2.
+
+## Current Architecture
+
+This release consolidates the project to a single runtime model:
+
+- One Streamlit dashboard instance
+- One SQLite database: `data/heating_data.db`
+- One launcher script: `scripts/run_dashboard.sh`
+- One collector process that records readings every five minutes
+- One user-level systemd service for autostart on boot
+
+The older development/production split was removed to simplify deployment and maintenance.
 
 The app is read-only with respect to heating settings. It reports target temperatures but never writes them back to Homematic IP.
 
@@ -17,6 +29,8 @@ The app is read-only with respect to heating settings. It reports target tempera
   - Five-state temperature and humidity trend arrows calculated over the last 30 minutes: red `↑`, orange `↗`, gray `→`, light-blue `↘`, and blue `↓`
 - Room detail view with historical charts and event log
 - Compact charts for all rooms
+- Room report with spider charts for current temperature and humidity across all rooms
+- Single-service user setup with automatic startup and stable LAN access
 - Graph scale defaults:
   - Temperature: `10-30 C`
   - Humidity and valve position: `0-100%`
@@ -32,6 +46,7 @@ The top navigation provides:
 
 - `Home`: room overview only
 - `Raumdetail`: selected room history, charts, and event log
+- `Raumbericht`: current temperature and humidity spider charts for all rooms
 - `Alle Diagramme`: compact historical charts for all rooms
 - `Einstellungen`: reread Homematic devices, inspect the device/channel hierarchy, and load Viessmann data
 - `Refresh`: fetch and archive current readings
@@ -85,7 +100,7 @@ Enter the Access Point SGTIN and press the blue system button on the physical Ac
 Initialize the database and start the dashboard together with its data collector:
 
 ```bash
-python scripts/init_db.py
+python3 scripts/init_db.py
 sh scripts/run_dashboard.sh
 ```
 
@@ -101,9 +116,19 @@ Run the dashboard without Homematic hardware (UI only, no collector):
 HOMEDASH_PROVIDER=mock streamlit run app.py
 ```
 
+## Autostart
+
+The project uses a single user service for automatic startup:
+
+```bash
+systemctl --user enable --now homedash.service
+```
+
+This service starts the dashboard and the collector together and binds to `0.0.0.0:8501`.
+
 ## Start
 
-There is one dashboard instance and one database during development:
+There is one dashboard instance and one database in this release:
 
 ```bash
 sh scripts/run_dashboard.sh

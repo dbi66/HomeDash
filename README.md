@@ -82,11 +82,11 @@ Enter the Access Point SGTIN and press the blue system button on the physical Ac
 
 ## Start Locally
 
-Initialize the database and start Streamlit:
+Initialize the database and start the dashboard together with its data collector:
 
 ```bash
 python scripts/init_db.py
-streamlit run app.py
+sh scripts/run_dashboard.sh
 ```
 
 Open:
@@ -95,87 +95,37 @@ Open:
 http://localhost:8501
 ```
 
-Run without Homematic hardware:
+Run the dashboard without Homematic hardware (UI only, no collector):
 
 ```bash
 HOMEDASH_PROVIDER=mock streamlit run app.py
 ```
 
-## Production and Development Profiles
+## Start
 
-Production and development use separate deployed applications, ports, and databases:
-
-| Profile | Start method | Port | Database |
-|---|---|---:|---|
-| Production | Dedicated detached worktree + macOS LaunchAgent | `8501` | `~/Library/Application Support/HomeDash/production/data/heating_data.db` |
-| Development/test | Manual | `8502` | `data/heating_data-test.db` |
-
-Start the development version manually:
+There is one dashboard instance and one database during development:
 
 ```bash
-sh scripts/run_development.sh
+sh scripts/run_dashboard.sh
 ```
 
-The development profile never writes to the production database unless `HOMEDASH_DATABASE` is explicitly overridden.
-
-Create the initial development database as a consistent copy of production:
-
-```bash
-python scripts/clone_production_database.py
-sh scripts/run_development.sh
-```
-
-An existing development copy is protected by default. Replace it explicitly with:
-
-```bash
-python scripts/clone_production_database.py --force
-```
-
-Deploy a specific commit to the independent production worktree and install its macOS LaunchAgents:
-
-```bash
-sh scripts/deploy_production.sh HEAD
-```
-
-The production service runs only from `~/Library/Application Support/HomeDash/production`. Changes in this development checkout do not affect production until `deploy_production.sh` is run with an explicit commit or tag. The first deployment creates a consistent copy of the existing `data/heating_data.db`; it never replaces an existing production database.
-
-To install or restart the LaunchAgents without changing the deployed code:
-
-```bash
-sh scripts/install_production_launch_agent.sh
-```
-
-Remove the automatic production service:
-
-```bash
-sh scripts/uninstall_production_launch_agent.sh
-```
-
-Production logs are written to the deployed data directory, which is outside the Git checkout. Installing or removing the LaunchAgent does not delete or reset any database.
-
-The production installation includes a separate collector LaunchAgent. It runs one Homematic snapshot every five minutes and exits; the Streamlit server remains an independent continuously running service. Collector logs are written to `data/logs/collector.*.log`.
+The dashboard uses `data/heating_data.db` by default. The launcher also starts the Homematic collector, which writes room readings every five minutes. Override the bind address, port, collector interval, provider, or database path with environment variables when needed.
 
 ## Trusted Network Access
 
-The default launcher binds to localhost. To access the dashboard from another device on the same trusted network or VPN:
+The default launcher binds to all network interfaces. To access the dashboard from another device on the same trusted network or VPN, find the host's active LAN address:
 
 ```bash
-HOMEDASH_BIND=0.0.0.0 HOMEDASH_PORT=8501 sh scripts/run_dashboard.sh
-```
-
-Find the Mac's active address:
-
-```bash
-ifconfig | awk '/inet / && $2 != "127.0.0.1" {print $2}'
+hostname -I
 ```
 
 Then open:
 
 ```text
-http://<mac-address>:8501
+http://<lan-address>:8501
 ```
 
-The launcher provides no authentication and no HTTPS. Never expose this development server directly to the public internet.
+The launcher provides no authentication and no HTTPS. Use it only on a trusted network and never expose it directly to the public internet.
 
 ## Data Collection
 
@@ -185,16 +135,16 @@ Collect one complete Homematic state snapshot:
 python scripts/collect_snapshot.py
 ```
 
-Collect room readings continuously and limit full Homematic snapshots to one every 30 minutes:
+The dashboard launcher collects room readings continuously. By default it runs one collection every five minutes and limits full Homematic snapshots to one every 30 minutes:
 
 ```bash
-python scripts/collect_snapshot.py --interval 300
+HOMEDASH_COLLECTOR_INTERVAL=300 sh scripts/run_dashboard.sh
 ```
 
-Change the full snapshot interval:
+Collect one snapshot manually without starting the dashboard:
 
 ```bash
-python scripts/collect_snapshot.py --interval 300 --snapshot-interval 60
+python scripts/collect_snapshot.py
 ```
 
 Inspect available Homematic devices and channels without printing credentials:
@@ -266,7 +216,6 @@ HomeDash/
 
 ## Roadmap
 
-- Automatic macOS LaunchDaemon setup for the collector
 - More complete room-level assignments
 - Dew-point and temperature/humidity risk analysis
 - Longer-term aggregation and retention policies

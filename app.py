@@ -1,12 +1,11 @@
-import re
 from html import escape
 
 import pandas as pd
 import streamlit as st
 
-from src.charts import render_climate_chart
-from src.database import get_latest_readings, get_room_events, get_room_history, get_room_trends, save_readings, save_viessmann_snapshots
+from src.database import get_latest_readings, get_room_events, save_readings, save_viessmann_snapshots
 from src.config import DATABASE_PATH, PROVIDER
+from src.dashboard_views import render_compact_chart, render_history, render_overview, render_overview_graphs, render_room_tiles
 from src.history import save_home_snapshot
 from src.hmip_provider import HomematicProviderError, load_home, get_room_readings as get_hmip_readings, map_room_readings
 from src.mock_provider import get_room_readings
@@ -14,7 +13,9 @@ from src.room_layout import BASE_LEVEL, UNASSIGNED, UPSTAIRS, group_readings_by_
 from src.viessmann_provider import ViessmannProviderError, read_all_information
 
 
-st.set_page_config(page_title="HomeClimate Dashboard", page_icon=":house:", layout="wide")
+APP_NAME = "HomeClimate Dashboard"
+
+st.set_page_config(page_title=APP_NAME, page_icon=":house:", layout="wide")
 
 st.markdown(
     """
@@ -142,7 +143,7 @@ st.markdown(
             }
 
             [data-testid="stHorizontalBlock"] {
-                flex-wrap: nowrap;
+                flex-wrap: wrap;
                 gap: 0.5rem;
                 max-width: calc(100vw - 1.5rem) !important;
                 width: calc(100vw - 1.5rem) !important;
@@ -152,6 +153,15 @@ st.markdown(
                 flex: 0 0 calc(50% - 0.25rem);
                 min-width: 0;
                 width: calc(50% - 0.25rem) !important;
+            }
+
+            [data-testid="stHorizontalBlock"]:has(.dashboard-header) {
+                flex-wrap: wrap;
+            }
+
+            [data-testid="stHorizontalBlock"]:has(.dashboard-header) [data-testid="stColumn"] {
+                flex: 0 0 100%;
+                width: 100% !important;
             }
 
             .level-heading {
@@ -196,10 +206,30 @@ st.markdown(
                 white-space: nowrap;
             }
 
-                .stButton button[kind="secondary"] {
-                    min-height: 96px;
-                    padding: 0.65rem;
-                }
+            .stButton button[kind="secondary"] {
+                min-height: 96px;
+                padding: 0.65rem;
+            }
+
+            [class*="st-key-overview-room-"] button p:first-child,
+            [class*="st-key-room-tile-"] button p:first-child {
+                font-size: 0.72rem;
+                overflow-wrap: anywhere;
+            }
+
+            [class*="st-key-overview-room-"] button p:nth-child(2),
+            [class*="st-key-room-tile-"] button p:nth-child(2) {
+                font-size: 0.62rem;
+                overflow-wrap: anywhere;
+            }
+
+            [class*="st-key-overview-room-"] button > div,
+            [class*="st-key-room-tile-"] button > div,
+            [class*="st-key-overview-room-"] button p,
+            [class*="st-key-room-tile-"] button p {
+                min-width: 0;
+                white-space: normal;
+            }
         }
 
             .stButton button[kind="secondary"] {
@@ -277,18 +307,33 @@ st.markdown(
                     line-height: 1;
                 }
 
-                [class*="st-key-overview-room-"] button p:first-child {
+                [class*="st-key-overview-room-"] button p:first-child,
+                [class*="st-key-room-tile-"] button p:first-child {
                     color: #102a43;
-                    font-size: 1.35rem;
+                    font-size: 0.95rem;
                     font-weight: 800;
-                    line-height: 1.05;
+                    line-height: 1.2;
                 }
 
-                [class*="st-key-overview-room-"] button p:nth-child(2) {
-                    color: #102a43;
-                    font-size: 1.8rem;
-                    font-weight: 800;
-                    line-height: 1.05;
+                [class*="st-key-overview-room-"] button p:nth-child(2),
+                [class*="st-key-room-tile-"] button p:nth-child(2) {
+                    color: #486581;
+                    font-size: 0.72rem;
+                    font-weight: 500;
+                    line-height: 1.25;
+                }
+
+                [class*="st-key-overview-room-"] button > div,
+                [class*="st-key-room-tile-"] button > div {
+                    display: block !important;
+                    width: 100%;
+                }
+
+                [class*="st-key-overview-room-"] button p,
+                [class*="st-key-room-tile-"] button p {
+                    display: block !important;
+                    margin: 0;
+                    width: 100%;
                 }
 
                 [class*="st-key-function-navigation"] {
@@ -382,7 +427,7 @@ def render_viessmann_inventory(inventory: list[dict[str, object]]) -> None:
 header_actions = st.columns([6, 2, 3])
 with header_actions[0]:
     st.markdown(
-        '<div class="dashboard-header"><h1>HomeClimate Dashboard</h1></div>',
+        f'<div class="dashboard-header"><h1>{escape(APP_NAME)}</h1></div>',
         unsafe_allow_html=True,
     )
 with header_actions[1]:
@@ -525,109 +570,10 @@ if selected_room not in room_names:
 st.session_state["selected_room"] = selected_room
 
 
-def valve_meter(valve_position: float) -> str:
-    filled = round(max(0.0, min(100.0, valve_position)) / 10)
-    return "[{}{}]".format("#" * filled, "-" * (10 - filled))
-
-
-def colored_trend(arrow: str) -> str:
-    colors = {
-        "↑": "red",
-        "↗": "orange",
-        "→": "gray",
-        "↘": "blue",
-        "↓": "blue",
-    }
-    return f':{colors.get(arrow, "gray")}[' + arrow + "]"
-
-
-def room_widget_slug(room_name: str) -> str:
-    return re.sub(r"[^a-zA-Z0-9_-]", "-", room_name)
-
-
-def render_overview() -> None:
-    grouped = group_readings_by_level(readings)
-    for level in (UPSTAIRS, BASE_LEVEL, UNASSIGNED):
-        level_readings = grouped.get(level, [])
-        if not level_readings:
-            continue
-        st.markdown(f'<div class="level-heading">{escape(level)}</div>', unsafe_allow_html=True)
-        columns = st.columns(min(4, len(level_readings)))
-        for index, reading in enumerate(level_readings):
-            room_name = str(reading["room_name"])
-            valve = float(reading["valve_position"])
-            trends = get_room_trends(DATABASE_PATH, room_name)
-            label = (
-                f"**{room_name}**\n\n"
-                f"{float(reading['current_temperature']):.1f} C {colored_trend(trends['temperature'])}  |  {float(reading['humidity']):.0f}% {colored_trend(trends['humidity'])}\n\n"
-                f"Target {float(reading['target_temperature']):.1f} C  |  Valve {valve_meter(valve)} {valve:.0f}%"
-            )
-            with columns[index % len(columns)]:
-                if st.button(label, key=f"overview-room-{room_name}", width="stretch"):
-                    st.session_state["selected_room"] = room_name
-                    st.session_state["pending-navigation"] = "Raumdetail"
-                    st.session_state["pending-room"] = room_name
-                    st.session_state["pending-view"] = "detail"
-                    st.query_params.clear()
-                    st.query_params.update({"room": room_name, "view": "detail"})
-                    st.rerun()
-    st.caption(f"Data provider: {PROVIDER}")
-
-
-def render_overview_graphs() -> None:
-    st.markdown('<div class="level-heading">Alle Diagramme</div>', unsafe_allow_html=True)
-    hours = st.selectbox(
-        "History range",
-        options=(24, 168, 720),
-        format_func=lambda value: {24: "Last 24 hours", 168: "Last 7 days", 720: "Last 30 days"}[value],
-        key="overview-all-graphs-window",
-    )
-    graph_columns = st.columns(2)
-    for index, room_name in enumerate(room_names):
-        history = get_room_history(DATABASE_PATH, room_name, hours)
-        if len(history) < 2:
-            continue
-        with graph_columns[index % 2]:
-            render_climate_chart(pd.DataFrame(history), room_name, 180, "Fixed range", "all")
-
-
-def render_history(room_name: str) -> None:
-    st.markdown(
-        f'<div style="color:#102a43;font-size:1.35rem;font-weight:750;margin:0.5rem 0 0.25rem;">History: {escape(room_name)}</div>',
-        unsafe_allow_html=True,
-    )
-    history_window = st.selectbox(
-        "Time range",
-        options=(24, 168, 720),
-        format_func=lambda hours: {24: "Last 24 hours", 168: "Last 7 days", 720: "Last 30 days"}[hours],
-    )
-    scale_mode = st.selectbox(
-        "Chart scale",
-        options=("Fixed range", "Fit data"),
-        key=f"chart-scale-{room_name}",
-        help="Temperature defaults to 10-30 C. Humidity and valve use 0-100%.",
-    )
-    history = get_room_history(DATABASE_PATH, room_name, history_window)
-    if len(history) < 2:
-        st.info("Not enough snapshots for a trend yet. Keep the collector running to build history.")
-        return
-
-    history_frame = pd.DataFrame(history)
-    render_climate_chart(history_frame, room_name, 360, scale_mode, "detail")
-
-
-def render_compact_chart(room_name: str, hours: int) -> None:
-    history = get_room_history(DATABASE_PATH, room_name, hours)
-    if len(history) < 2:
-        st.caption(f"{room_name}: not enough data")
-        return
-    render_climate_chart(pd.DataFrame(history), room_name, 180, "Fixed range", "compact")
-
-
 if page == "overview":
     if st.session_state.get("show_all_graphs", False):
-        render_overview_graphs()
-    render_overview()
+        render_overview_graphs(room_names, DATABASE_PATH)
+    render_overview(readings, DATABASE_PATH, PROVIDER)
     st.stop()
 
 
@@ -640,7 +586,7 @@ with st.container(border=True):
         st.rerun()
     else:
         st.query_params["room"] = selected_room
-    render_history(selected_room)
+    render_history(selected_room, DATABASE_PATH)
     if st.button("Event log", key="event-log-button", width="stretch"):
         st.session_state["show_event_log"] = not st.session_state.get("show_event_log", False)
         st.rerun()
@@ -664,51 +610,7 @@ if st.session_state.get("show_all_graphs", False):
         graph_columns = st.columns(2)
         for index, room_name in enumerate(room_names):
             with graph_columns[index % 2]:
-                render_compact_chart(room_name, all_graph_hours)
-
-def valve_color(valve_position: float) -> str:
-    if valve_position <= 0:
-        return "#dbeafe"
-    intensity = min(1.0, valve_position / 100)
-    start = (245, 158, 11)
-    end = (220, 38, 38)
-    color = tuple(round(start[index] + (end[index] - start[index]) * intensity) for index in range(3))
-    return "rgb({}, {}, {})".format(*color)
-
-
-def render_room_tiles(level_readings: list[dict[str, object]]) -> None:
-    columns = st.columns(min(4, len(level_readings)))
-    for index, reading in enumerate(level_readings):
-        room_name = escape(str(reading["room_name"]))
-        valve_position = float(reading["valve_position"])
-        status = "Heating" if valve_position > 0 else "Idle"
-        selection = "Selected" if str(reading["room_name"]) == selected_room else status
-        tile_label = (
-            f"**{room_name}**\n\n"
-            f"{float(reading['current_temperature']):.1f} C  |  Target {float(reading['target_temperature']):.1f} C\n\n"
-            f"Humidity {float(reading['humidity']):.0f}%  |  Valve {valve_position:.0f}%  |  {selection}"
-        )
-        with columns[index % len(columns)]:
-            color = valve_color(valve_position)
-            widget_slug = room_widget_slug(str(reading["room_name"]))
-            st.markdown(
-                f"<style>.st-key-overview-room-{widget_slug} button {{ background: {color}; }} "
-                f".st-key-overview-room-{widget_slug} button:hover {{ background: {color}; filter: brightness(0.96); }}</style>",
-                unsafe_allow_html=True,
-            )
-            if st.button(
-                tile_label,
-                key=f"room-tile-{reading['room_name']}",
-                width="stretch",
-                type="secondary",
-            ):
-                st.session_state["selected_room"] = str(reading["room_name"])
-                st.session_state["pending-navigation"] = "Raumdetail"
-                st.session_state["pending-room"] = str(reading["room_name"])
-                st.session_state["pending-view"] = "detail"
-                st.query_params.clear()
-                st.query_params.update({"room": str(reading["room_name"]), "view": "detail"})
-                st.rerun()
+                render_compact_chart(room_name, DATABASE_PATH, all_graph_hours)
 
 
 grouped_readings = group_readings_by_level(readings)

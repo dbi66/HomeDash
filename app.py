@@ -8,6 +8,7 @@ import streamlit as st
 from src.database import get_latest_data_timestamps, get_latest_readings, get_latest_viessmann_snapshots, get_room_events, get_viessmann_feature_history, get_viessmann_snapshot_history, save_readings, save_viessmann_snapshots
 from src.config import DATABASE_PATH, HOMEDASH_ELECTRICITY_PRICE, PROVIDER
 from src.dashboard_views import render_compact_chart, render_history, render_overview, render_overview_graphs, render_room_report, render_room_tiles, render_valve_status_table
+from src.display import format_data_age, format_timestamp
 from src.hmip_provider import HomematicProviderError, load_home, get_room_readings as get_hmip_readings
 from src.mock_provider import get_room_readings
 from src.monitoring import HeatPumpMetrics, SystemAlert, build_heat_pump_metrics, build_system_alerts
@@ -25,26 +26,6 @@ def render_embedded_html(markup: str, height: int) -> None:
     st.iframe(source, width="stretch", height=height)
 
 
-def format_timestamp(value: object) -> str:
-    if not value:
-        return "keine Daten"
-    timestamp = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-    if timestamp.tzinfo is None:
-        timestamp = timestamp.replace(tzinfo=datetime.now().astimezone().tzinfo)
-    return timestamp.astimezone().strftime("%d.%m.%Y %H:%M")
-
-def format_data_age(value: object) -> str:
-    if not value:
-        return "keine Daten"
-    timestamp = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-    if timestamp.tzinfo is None:
-        timestamp = timestamp.replace(tzinfo=datetime.now().astimezone().tzinfo)
-    minutes = max(0, int((datetime.now(timestamp.tzinfo) - timestamp).total_seconds() / 60))
-    if minutes < 2:
-        return "gerade eben"
-    if minutes < 60:
-        return f"vor {minutes} min"
-    return f"vor {minutes // 60} h"
 st.set_page_config(page_title=APP_NAME, page_icon=":house:", layout="wide")
 
 st.markdown(

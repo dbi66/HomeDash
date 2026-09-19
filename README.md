@@ -1,4 +1,4 @@
-# HomeClimate Dashboard v0.4
+# HomeClimate Dashboard v0.5.3
 
 HomeClimate Dashboard is a local Streamlit app for monitoring a Homematic IP heating system. It reads room temperatures, target temperatures, humidity, and underfloor-heating valve positions from a Homematic IP Access Point such as the HmIP-HAP2.
 
@@ -9,7 +9,8 @@ This release consolidates the project to a single runtime model:
 - One Streamlit dashboard instance
 - One SQLite database: `data/heating_data.db`
 - One launcher script: `scripts/run_dashboard.sh`
-- One collector process that records readings every five minutes
+- One Homematic collector process that records readings every 15 minutes
+- One Viessmann collector process that records heat-pump snapshots every 30 minutes
 - One user-level systemd service for autostart on boot
 
 The older development/production split was removed to simplify deployment and maintenance.
@@ -39,18 +40,24 @@ The app is read-only with respect to heating settings. It reports target tempera
 - Read-only Viessmann inventory for installations, gateways, devices, and exposed feature names
 - Local or trusted-network access through the dashboard launcher
 - SQLite history for room readings, events, target reports, and Homematic snapshots
+- Seven-day weather forecast for Aystetten (86482)
+- Tile-based Home start page with room, weather, and heat-pump summaries
+- Viessmann heat-pump schematics, KPIs, heating curve, and energy indicators
+- Page-specific help and a rerender-only `Neu laden` action
 
 ## Navigation
 
 The top navigation provides:
 
-- `Home`: room overview only
+- `Home`: tile-based start page with weather, heat-pump, data-status, and room summaries
 - `Raumdetail`: selected room history, charts, and event log
 - `Raumbericht`: current temperature and humidity spider charts for all rooms
 - `Alle Diagramme`: compact historical charts for all rooms
 - `Wärmepumpe`: human-readable read-only report for archived Viessmann heat-pump data and snapshot history
+- `Wetter`: seven-day forecast for Aystetten (86482)
 - `Einstellungen`: reread Homematic devices, inspect the device/channel hierarchy, and load Viessmann data
-- `Refresh`: fetch and archive current readings
+- `Neu laden`: rerender the current page without triggering provider requests
+- `Hilfe`: explains the current page and its data-update behavior
 
 Click a room tile from `Home` to open its detail view.
 
@@ -70,6 +77,40 @@ Choose `Viessmann-Daten einlesen` to archive the complete feature inventory in `
 `scripts/run_dashboard.sh` also starts `scripts/collect_viessmann.py` in the background, which archives a Viessmann heat-pump snapshot every 30 minutes (override with `HOMEDASH_VIESSMANN_INTERVAL`, in seconds). It authenticates using the `VIESSMANN_USERNAME`, `VIESSMANN_PASSWORD`, `VIESSMANN_CLIENT_ID`, and `VIESSMANN_TOKEN_FILE` environment variables. The tracked systemd template loads them from `/home/dennis/.config/homedash/viessmann.env`; keep that file owner-readable only and never commit it.
 
 The Homematic collector runs every 15 minutes by default. The dashboard `Neu laden` button only rerenders the current page and never triggers a provider request. Development checks are available with `python -m pytest -q` and `python -m ruff check app.py src scripts tests`.
+
+## Prioritized Roadmap
+
+The following ten steps are ordered by operational risk first, then by user value and maintainability. Each step should be completed with tests and a short system check before starting the next one.
+
+1. **Make data freshness and failures explicit**
+  Add a shared health model for Homematic, Viessmann, and weather data. Show `aktuell`, `veraltet`, `keine Daten`, rate-limit errors, and the last successful collection time consistently on every relevant page.
+
+2. **Build a central alarm and status center**
+  Combine stale data, offline devices, open valves, rooms below target, active heating rod, abnormal temperatures, and collector failures into one prioritized status tile on `Home`.
+
+3. **Add reliable energy and cost analytics**
+  Track daily, weekly, and monthly supplied energy, produced heat, SPF/COP, heating-rod share, hot-water share, and configurable electricity costs. Clearly distinguish calendar-day counters from rolling 24-hour values.
+
+4. **Add cross-module heating effectiveness analysis**
+  Correlate weather, heating curve, supply temperature, room temperatures, target temperatures, and valve positions. Highlight rooms that remain below target despite active heating demand.
+
+5. **Complete operational maintenance metrics**
+  Add compressor cycling, average runtime per start, fan/pump runtime, defrost count and duration, operating-mode history, and maintenance warnings.
+
+6. **Split the Streamlit application into page modules**
+  Move Home, Wetter, Wärmepumpe, Raumdetail, and reports out of `app.py`. Keep routing, shared session state, and common layout in a small application shell.
+
+7. **Introduce typed domain and provider models**
+  Replace untyped `dict[str, object]` payloads and scattered feature-name strings with typed room, weather, heat-pump, KPI, and sensor-mapping models. Keep provider-specific raw JSON behind adapters.
+
+8. **Create a repository and migration layer for SQLite**
+  Separate SQL, migrations, JSON decoding, and domain logic. Add schema versions, transaction boundaries, retention policies, and indexes for time-window KPI queries.
+
+9. **Expand automated quality and integration tests**
+  Add provider fixtures, collector retry tests, sensor-mapping tests, KPI edge cases, stale-data tests, weather fallback tests, and browser smoke tests for desktop and mobile routes.
+
+10. **Harden deployment and observability**
+   Move all secrets to a protected EnvironmentFile, add structured rotating logs, health checks, graceful collector shutdown, backup verification, and a documented upgrade/rollback procedure.
 
 ## Requirements
 

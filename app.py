@@ -944,8 +944,8 @@ def render_clear_heat_pump_schema(snapshot: object) -> None:
                 <path d="M900 425 H1080" class="clear-floor clear-floor-cold"/>
                 <text x="990" y="270" text-anchor="middle" class="clear-title" style="font-size:12px">FUSSBODENHEIZUNG</text>
                 <text x="990" y="288" text-anchor="middle" class="clear-value">Vorlauf {escape(value("Heizkreis 1 Vorlauf"))}</text>
-                <text x="1100" y="450" text-anchor="middle" class="clear-label">ANLAGENRÜCKLAUF</text>
-                <text x="1100" y="470" text-anchor="middle" class="clear-value">{escape(value("Heizungsrücklauf"))}</text>
+                <text x="1100" y="450" text-anchor="middle" class="clear-label">HEIZKREIS-RÜCKLAUF</text>
+                <text x="1100" y="470" text-anchor="middle" class="clear-state">kein separater Viessmann-Sensor</text>
             </svg>
         </div>
         '''
@@ -1256,7 +1256,7 @@ def render_heat_pump_report(snapshot: object, history: list[dict[str, object]]) 
 
     render_heat_pump_kpis(snapshot, str(DATABASE_PATH))
     st.markdown("### Anlagenbild")
-    st.caption("Schematische Live-Ansicht aus dem letzten Viessmann-Snapshot. Rot = Vorlauf, Blau = Rücklauf.")
+    st.caption("Schematische Live-Ansicht. Rot = Vorlauf, Blau = hydraulischer Rücklauf; Viessmann liefert hierfür keinen separaten Heizkreis-Sensor.")
     render_clear_heat_pump_schema(snapshot)
     st.markdown("### Viessmann-Komponentenbild")
     st.caption("Originalnahe Komponentenansicht mit den verfügbaren Viessmann-Livewerten.")

@@ -80,6 +80,16 @@ The Homematic collector runs every 15 minutes by default. The dashboard `Neu lad
 
 Set `HOMEDASH_ELECTRICITY_PRICE` to override the default electricity price of `0.30` EUR/kWh used by the Home energy-cost KPI.
 
+Deployment checks:
+
+```bash
+python scripts/healthcheck.py
+python scripts/smoke_test.py
+python scripts/backup_database.py --verify
+```
+
+The healthcheck verifies SQLite integrity, data freshness against the configured collector intervals, and HTTP availability of Streamlit. The smoke test verifies the dashboard response markers. The backup command creates and verifies a consistent SQLite copy. Run these commands from a systemd timer or external monitor for unattended observability.
+
 ## Prioritized Roadmap
 
 The following ten steps are ordered by operational risk first, then by user value and maintainability. Each step should be completed with tests and a short system check before starting the next one.

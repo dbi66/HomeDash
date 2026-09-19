@@ -3,7 +3,6 @@ from html import escape
 
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 from src.database import get_latest_data_timestamps, get_latest_readings, get_latest_viessmann_snapshots, get_room_events, get_viessmann_feature_history, get_viessmann_snapshot_history, save_readings, save_viessmann_snapshots
 from src.config import DATABASE_PATH, PROVIDER
@@ -828,7 +827,7 @@ def render_heat_pump_schema(snapshot: object) -> None:
       </svg>
     </div>
     '''
-    components.html(schema, height=520, scrolling=True)
+    st.html(schema)
 
 
 def render_clear_heat_pump_schema(snapshot: object) -> None:
@@ -944,7 +943,7 @@ def render_clear_heat_pump_schema(snapshot: object) -> None:
             </svg>
         </div>
         '''
-        components.html(schema, height=620, scrolling=True)
+        st.html(schema)
 
 
 def render_viessmann_component_schema(snapshot: object) -> None:
@@ -1045,7 +1044,7 @@ def render_viessmann_component_schema(snapshot: object) -> None:
             </svg>
         </div>
         '''
-        components.html(schema, height=500, scrolling=True)
+        st.html(schema)
 
 
 def render_heat_pump_kpis(snapshot: object, database_path: str) -> None:
@@ -1240,7 +1239,7 @@ def render_heating_curve(snapshot: object) -> None:
               <text x="14" y="125" text-anchor="middle" transform="rotate(-90 14 125)" class="axis-title">Vorlauf-Soll</text>
             </svg>
             '''
-            components.html(curve_markup, height=275, scrolling=False)
+            st.html(curve_markup)
 
 
 def render_heat_pump_report(snapshot: object, history: list[dict[str, object]]) -> None:

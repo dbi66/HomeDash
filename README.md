@@ -67,7 +67,9 @@ export VIESSMANN_TOKEN_FILE="data/vicare_token.json"
 
 Choose `Viessmann-Daten einlesen` to archive the complete feature inventory in `viessmann_snapshots`. Choose `Wärmepumpe read-only einlesen` to read and archive the current heat-pump feature values. Open `Wärmepumpe` in the main navigation for the human-readable report and stored snapshot history. The module selects Viessmann heat-pump devices only, reads their exposed feature properties, and never calls a Viessmann write API or changes heating settings. Credentials and live heat-pump values remain in the current Streamlit session; the token file remains local. Environment variables remain available for unattended use.
 
-`scripts/run_dashboard.sh` also starts `scripts/collect_viessmann.py` in the background, which archives a Viessmann heat-pump snapshot every 30 minutes (override with `HOMEDASH_VIESSMANN_INTERVAL`, in seconds). It authenticates using the `VIESSMANN_USERNAME`, `VIESSMANN_PASSWORD`, `VIESSMANN_CLIENT_ID`, and `VIESSMANN_TOKEN_FILE` environment variables, so set these (e.g. in `scripts/homedash.service`) for unattended collection.
+`scripts/run_dashboard.sh` also starts `scripts/collect_viessmann.py` in the background, which archives a Viessmann heat-pump snapshot every 30 minutes (override with `HOMEDASH_VIESSMANN_INTERVAL`, in seconds). It authenticates using the `VIESSMANN_USERNAME`, `VIESSMANN_PASSWORD`, `VIESSMANN_CLIENT_ID`, and `VIESSMANN_TOKEN_FILE` environment variables. The tracked systemd template loads them from `/home/dennis/.config/homedash/viessmann.env`; keep that file owner-readable only and never commit it.
+
+The Homematic collector runs every 15 minutes by default. The dashboard `Neu laden` button only rerenders the current page and never triggers a provider request. Development checks are available with `python -m pytest -q` and `python -m ruff check app.py src scripts tests`.
 
 ## Requirements
 

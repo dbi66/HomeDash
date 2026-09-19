@@ -5,6 +5,7 @@ import re
 from typing import Any
 
 from src.viessmann_provider import ViessmannProviderError, load_client
+from src.feature_access import FeatureAccessor
 
 
 @dataclass(frozen=True)
@@ -190,11 +191,14 @@ def report_sections(snapshot: HeatPumpSnapshot) -> dict[str, list[dict[str, str]
 
 
 def _feature_property(snapshot: HeatPumpSnapshot, feature_name: str, property_name: str) -> str:
+    accessor = FeatureAccessor(snapshot.features)
+    value = accessor.value(feature_name, property_name)
+    if value is None:
+        return "nicht verfügbar"
     for row in feature_values(snapshot):
         if row["feature"] == feature_name and row["property"] == property_name:
-            value = row["value"]
             return f"{value} {row['unit']}".strip()
-    return "nicht verfügbar"
+    return str(value)
 
 
 def system_map(snapshot: HeatPumpSnapshot) -> dict[str, list[dict[str, str]]]:

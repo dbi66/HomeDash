@@ -8,8 +8,7 @@ import streamlit.components.v1 as components
 from src.database import get_latest_data_timestamps, get_latest_readings, get_latest_viessmann_snapshots, get_room_events, get_viessmann_feature_history, get_viessmann_snapshot_history, save_readings, save_viessmann_snapshots
 from src.config import DATABASE_PATH, PROVIDER
 from src.dashboard_views import render_compact_chart, render_history, render_overview, render_overview_graphs, render_room_report, render_room_tiles, render_valve_status_table
-from src.history import save_home_snapshot
-from src.hmip_provider import HomematicProviderError, load_home, get_room_readings as get_hmip_readings, map_room_readings
+from src.hmip_provider import HomematicProviderError, load_home, get_room_readings as get_hmip_readings
 from src.mock_provider import get_room_readings
 from src.room_layout import BASE_LEVEL, UNASSIGNED, UPSTAIRS, group_readings_by_level
 from src.viessmann_heatpump import feature_values, heat_pump_snapshots_from_inventory, read_heat_pumps, report_sections, system_map
@@ -724,8 +723,6 @@ def render_heat_pump_schema(snapshot: object) -> None:
     heating_rod_ready = state("Inneneinheit Heizstab").lower() in {"true", "on", "active", "heating"}
     heating_rod_color = "#c98b4a" if heating_rod_ready else "#b9c2cc"
     heating_rod_state = "bereit / heizt nicht" if heating_rod_ready else "gesperrt"
-    fan_ring_active = state("Lüfterring").lower() in {"true", "on", "active", "heating"}
-    fan_ring_state = "aktiv" if fan_ring_active else "aus / bereit"
     schema = f'''
         <style>
             html, body {{ margin: 0; background: #f7fafc; }}
@@ -1124,7 +1121,6 @@ def render_heat_pump_kpis(snapshot: object, database_path: str) -> None:
         starts_delta = max(0.0, starts_24h[-1] - starts_24h[0]) if len(starts_24h) >= 2 else None
         hours_delta = max(0.0, hours_24h[-1] - hours_24h[0]) if len(hours_24h) >= 2 else None
         average_cycle = hours_delta * 60 / starts_delta if starts_delta and hours_delta is not None else None
-        supply_temperature = current("heating.circuits.0.sensors.temperature.supply", "value")
         return_temperature = current("heating.sensors.temperature.return", "value")
         secondary_supply_temperature = current("heating.secondaryCircuit.sensors.temperature.supply", "value")
         temperature_spread = (
@@ -1373,7 +1369,6 @@ def render_home_dashboard(readings: list[dict[str, object]], database_path: str,
     with overview_columns[0]:
         try:
             forecast = fetch_forecast().get("daily", {})
-            forecast_date = forecast.get("time", [""])[0]
             code = int(forecast.get("weather_code", [0])[0])
             icon, condition = weather_label(code)
             maximum = float(forecast.get("temperature_2m_max", [0])[0])

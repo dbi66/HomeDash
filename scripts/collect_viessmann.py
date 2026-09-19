@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 import time
 from pathlib import Path
@@ -7,15 +8,16 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import DATABASE_PATH
+from src.config import DATABASE_PATH, HOMEDASH_VIESSMANN_INTERVAL
 from src.database import save_viessmann_snapshots
 from src.viessmann_heatpump import read_heat_pumps
 from src.viessmann_provider import ViessmannProviderError, load_client
+from src.retry import retry_call
 
 
 def collect_once() -> int:
-    client = load_client()
-    heat_pumps = read_heat_pumps(client)
+    client = retry_call(load_client)
+    heat_pumps = retry_call(lambda: read_heat_pumps(client))
     return save_viessmann_snapshots(
         DATABASE_PATH,
         [
@@ -39,6 +41,9 @@ def main() -> int:
         help="Repeat every N seconds. Omit to collect one snapshot and exit.",
     )
     arguments = parser.parse_args()
+
+    if arguments.interval == 0 and "HOMEDASH_VIESSMANN_INTERVAL" in os.environ:
+        arguments.interval = HOMEDASH_VIESSMANN_INTERVAL
 
     next_run = time.monotonic()
     while True:

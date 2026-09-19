@@ -11,10 +11,7 @@ Environment=HOMEDASH_PORT=8501
 Environment=HOMEDASH_DATABASE=/home/dennis/Developer/HomeDash/data/heating_data.db
 Environment=HOMEDASH_COLLECTOR_INTERVAL=900
 Environment=HOMEDASH_VIESSMANN_INTERVAL=1800
-Environment=VIESSMANN_USERNAME=
-Environment=VIESSMANN_PASSWORD=
-Environment=VIESSMANN_CLIENT_ID=
-Environment=VIESSMANN_TOKEN_FILE=/home/dennis/Developer/HomeDash/data/vicare_token.json
+EnvironmentFile=-/home/dennis/.config/homedash/viessmann.env
 ExecStart=/bin/sh /home/dennis/Developer/HomeDash/scripts/run_dashboard.sh
 Restart=always
 RestartSec=5

@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -8,14 +9,15 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import DATABASE_PATH
+from src.config import DATABASE_PATH, HOMEDASH_COLLECTOR_INTERVAL
 from src.database import save_readings
 from src.history import save_home_snapshot
 from src.hmip_provider import HomematicProviderError, load_home, map_room_readings
+from src.retry import retry_call
 
 
 def collect_once(snapshot_interval_minutes: int) -> tuple[int, int]:
-    home = load_home()
+    home = retry_call(load_home)
     recorded_at = datetime.now(timezone.utc)
     room_readings = map_room_readings(home)
     if not room_readings:
@@ -45,6 +47,9 @@ def main() -> int:
         help="Minimum minutes between full Homematic snapshots.",
     )
     arguments = parser.parse_args()
+
+    if arguments.interval == 0 and "HOMEDASH_COLLECTOR_INTERVAL" in os.environ:
+        arguments.interval = HOMEDASH_COLLECTOR_INTERVAL
 
     next_run = time.monotonic()
     while True:

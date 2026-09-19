@@ -42,18 +42,30 @@ def map_room_readings(home: Home) -> list[RoomReading]:
     recorded_at = datetime.now(timezone.utc)
     readings: list[RoomReading] = []
     grouped_devices: dict[tuple[str, str], list[object]] = {}
+    grouped_valves: dict[tuple[str, str], list[float]] = {}
 
     for group in _room_groups(home):
         room_name = canonical_room_name(getattr(group, "label", None) or "Unnamed room")
         devices = getattr(group, "devices", [])
         level = ROOM_LEVELS.get(room_name, level_from_controller_devices(devices))
-        grouped_devices.setdefault((room_name, level), []).extend(devices)
+        group_key = (room_name, level)
+        grouped_devices.setdefault(group_key, []).extend(devices)
+        for device in devices:
+            for channel in getattr(device, "functionalChannels", []):
+                valve = _percent(_number(channel, "valvePosition"))
+                channel_groups = getattr(channel, "groups", [])
+                belongs_to_group = any(
+                    getattr(channel_group, "id", None) == getattr(group, "id", None)
+                    for channel_group in channel_groups
+                )
+                if valve is not None and belongs_to_group:
+                    grouped_valves.setdefault(group_key, []).append(valve)
 
     for (room_name, level), devices in grouped_devices.items():
         temperatures: list[float] = []
         targets: list[float] = []
         humidities: list[float] = []
-        valves: list[float] = []
+        valves: list[float] = grouped_valves.get((room_name, level), []).copy()
         seen_devices: set[str] = set()
 
         for device in devices:

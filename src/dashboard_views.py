@@ -53,8 +53,8 @@ def _room_label(reading: Reading, trends: Optional[dict[str, str]] = None) -> st
     valve = float(reading["valve_position"])
     temperature_trend = f" {colored_trend(trends['temperature'])}" if trends else ""
     humidity_trend = f" {colored_trend(trends['humidity'])}" if trends else ""
-    first_line = f"**{room_name}  |  {temperature:.1f} C{temperature_trend}  |  {humidity:.0f}%{humidity_trend}**"
-    second_line = f"Target {target:.1f} C  |  Valve {valve_meter(valve)} {valve:.0f}%"
+    first_line = f"**{room_name}  |  {temperature:.1f} °C{temperature_trend}  |  {humidity:.0f}%{humidity_trend}**"
+    second_line = f"Target {target:.1f} °C  |  Valve {valve_meter(valve)} {valve:.0f}%"
     return f"{first_line}\n\n{second_line}"
 
 
@@ -70,8 +70,8 @@ def _render_room_button(
         if background:
             widget_slug = room_widget_slug(room_name)
             st.markdown(
-                f"<style>.st-key-{key_prefix}-{widget_slug} button {{ background: {background}; }} "
-                f".st-key-{key_prefix}-{widget_slug} button:hover {{ background: {background}; filter: brightness(0.96); }}</style>",
+                f"<style>.st-key-{key_prefix}-{widget_slug} button {{ background: {background} !important; background-color: {background} !important; }} "
+                f".st-key-{key_prefix}-{widget_slug} button:hover {{ background: {background} !important; background-color: {background} !important; filter: brightness(0.96); }}</style>",
                 unsafe_allow_html=True,
             )
         if st.button(
@@ -96,12 +96,15 @@ def render_overview(
         for index, reading in enumerate(level_readings):
             room_name = str(reading["room_name"])
             trends = get_room_trends(database_path, room_name)
+            valve_position = float(reading["valve_position"])
+            background = valve_color(valve_position)
             with columns[index % len(columns)]:
                 _render_room_button(
                     reading,
                     key_prefix="overview-room",
                     label=_room_label(reading, trends),
                     open_room=_open_room,
+                    background=background,
                 )
     st.caption(f"Data provider: {provider}")
 
@@ -123,9 +126,37 @@ def render_overview_graphs(room_names: list[str], database_path: Union[str, Path
             render_climate_chart(pd.DataFrame(history), room_name, 180, "Fixed range", "all")
 
 
+def render_valve_status_table(readings: list[Reading]) -> None:
+    report_frame = pd.DataFrame(
+        [
+            {
+                "Raum": reading["room_name"],
+                "Ist (C)": reading["current_temperature"],
+                "Ziel (C)": reading["target_temperature"],
+                "Ventil (%)": reading["valve_position"],
+            }
+            for reading in readings
+        ]
+    )
+    styled_frame = report_frame.style.apply(
+        lambda row: [
+            "" for _ in row
+        ] if row["Ventil (%)"] <= 0 else [
+            "" if column != "Ventil (%)" else f"background-color: {valve_color(float(row['Ventil (%)']))}; color: #102a43; font-weight: 700"
+            for column in row.index
+        ],
+        axis=1,
+    )
+    st.dataframe(styled_frame, hide_index=True, width="stretch")
+
+
 def render_room_report(readings: list[Reading]) -> None:
     st.markdown('<div class="level-heading">Raumbericht</div>', unsafe_allow_html=True)
-    st.caption("Aktuelle Raumwerte im Vergleich.")
+    latest_read = max(
+        (str(reading.get("recorded_at", "")) for reading in readings),
+        default="unbekannt",
+    )
+    st.caption(f"Aktuelle Raumwerte im Vergleich. Gelesen am: {latest_read}")
     chart_columns = st.columns(2)
     with chart_columns[0]:
         render_spider_chart(
@@ -145,6 +176,8 @@ def render_room_report(readings: list[Reading]) -> None:
             color="#7c3aed",
             key="room-report-humidity",
         )
+    st.markdown("### Ventilstatus")
+    render_valve_status_table(readings)
 
 
 def render_history(room_name: str, database_path: Union[str, Path]) -> None:
@@ -168,6 +201,7 @@ def render_history(room_name: str, database_path: Union[str, Path]) -> None:
         st.info("Not enough snapshots for a trend yet. Keep the collector running to build history.")
         return
 
+    st.caption(f"Letzter Messwert gelesen am: {history[-1]['recorded_at']}")
     render_climate_chart(pd.DataFrame(history), room_name, 360, scale_mode, "detail")
 
 

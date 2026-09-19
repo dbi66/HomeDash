@@ -25,7 +25,7 @@ The app is read-only with respect to heating settings. It reports target tempera
   - Current temperature
   - Humidity
   - Target temperature
-  - Valve thermometer
+  - Valve thermometer, mapped from the associated floor-heating controller channel
   - Five-state temperature and humidity trend arrows calculated over the last 30 minutes: red `↑`, orange `↗`, gray `→`, light-blue `↘`, and blue `↓`
 - Room detail view with historical charts and event log
 - Compact charts for all rooms
@@ -48,6 +48,7 @@ The top navigation provides:
 - `Raumdetail`: selected room history, charts, and event log
 - `Raumbericht`: current temperature and humidity spider charts for all rooms
 - `Alle Diagramme`: compact historical charts for all rooms
+- `Wärmepumpe`: human-readable read-only report for archived Viessmann heat-pump data and snapshot history
 - `Einstellungen`: reread Homematic devices, inspect the device/channel hierarchy, and load Viessmann data
 - `Refresh`: fetch and archive current readings
 
@@ -55,7 +56,7 @@ Click a room tile from `Home` to open its detail view.
 
 ### Viessmann read-only inventory
 
-Installations with a Vitocal/Vitocell system can be inspected through PyViCare. Open `Einstellungen`, select the `Viessmann` tab, and enter the account email, password, API client ID, and token-file path:
+Installations with a Vitocal/Vitocell system can be inspected through PyViCare. Create an API key or client ID at the [Viessmann Climate Solutions Developer Portal](https://developer.viessmann-climatesolutions.com/start.html), then open `Einstellungen`, select the `Viessmann` tab, and enter the account email, password, API client ID, and token-file path:
 
 ```bash
 export VIESSMANN_USERNAME="your-account-email"
@@ -64,7 +65,9 @@ export VIESSMANN_CLIENT_ID="your-api-client-id"
 export VIESSMANN_TOKEN_FILE="data/vicare_token.json"
 ```
 
-Choose `Viessmann-Daten einlesen` to archive the complete feature inventory in `viessmann_snapshots`. The fields are held in the current Streamlit session only, the integration never changes heating settings, and the token file remains local. Environment variables remain available for unattended use.
+Choose `Viessmann-Daten einlesen` to archive the complete feature inventory in `viessmann_snapshots`. Choose `Wärmepumpe read-only einlesen` to read and archive the current heat-pump feature values. Open `Wärmepumpe` in the main navigation for the human-readable report and stored snapshot history. The module selects Viessmann heat-pump devices only, reads their exposed feature properties, and never calls a Viessmann write API or changes heating settings. Credentials and live heat-pump values remain in the current Streamlit session; the token file remains local. Environment variables remain available for unattended use.
+
+`scripts/run_dashboard.sh` also starts `scripts/collect_viessmann.py` in the background, which archives a Viessmann heat-pump snapshot every 30 minutes (override with `HOMEDASH_VIESSMANN_INTERVAL`, in seconds). It authenticates using the `VIESSMANN_USERNAME`, `VIESSMANN_PASSWORD`, `VIESSMANN_CLIENT_ID`, and `VIESSMANN_TOKEN_FILE` environment variables, so set these (e.g. in `scripts/homedash.service`) for unattended collection.
 
 ## Requirements
 
@@ -126,6 +129,12 @@ systemctl --user enable --now homedash.service
 
 This service starts the dashboard and the collector together and binds to `0.0.0.0:8501`.
 
+Check the service and collector status:
+
+```bash
+systemctl --user status homedash.service
+```
+
 ## Start
 
 There is one dashboard instance and one database in this release:
@@ -165,6 +174,8 @@ The dashboard launcher collects room readings continuously. By default it runs o
 ```bash
 HOMEDASH_COLLECTOR_INTERVAL=300 sh scripts/run_dashboard.sh
 ```
+
+Room valve positions are read from the `FLOOR_TERMINAL_BLOCK_MECHANIC_CHANNEL` channels of the associated HmIP floor-heating controllers. The values are normalized to percentages and stored in `room_readings`; valve transitions are recorded in `room_events`.
 
 Collect one snapshot manually without starting the dashboard:
 

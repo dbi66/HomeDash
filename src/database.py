@@ -41,42 +41,15 @@ def save_viessmann_snapshots(database_path: Union[str, Path], inventory: list[di
 
 
 def get_latest_viessmann_snapshots(database_path: Union[str, Path]) -> list[dict[str, object]]:
-    initialize_database(database_path)
-    with sqlite3.connect(database_path) as connection:
-        connection.row_factory = sqlite3.Row
-        latest_recorded_at = connection.execute(
-            "SELECT MAX(recorded_at) FROM viessmann_snapshots"
-        ).fetchone()[0]
-        if latest_recorded_at is None:
-            return []
-        rows = connection.execute(
-            "SELECT device_id, model, online, features_json FROM viessmann_snapshots WHERE recorded_at = ? ORDER BY model, device_id",
-            (latest_recorded_at,),
-        ).fetchall()
-    return [
-        {
-            "id": row["device_id"],
-            "model": row["model"],
-            "online": bool(row["online"]),
-            "features": json.loads(row["features_json"]),
-        }
-        for row in rows
-    ]
+    from src.repository import MonitoringRepository
+
+    return MonitoringRepository(database_path).latest_viessmann()
 
 
 def get_latest_data_timestamps(database_path: Union[str, Path]) -> dict[str, str | None]:
-    initialize_database(database_path)
-    with sqlite3.connect(database_path) as connection:
-        room_timestamp = connection.execute(
-            "SELECT MAX(recorded_at) FROM room_readings"
-        ).fetchone()[0]
-        viessmann_timestamp = connection.execute(
-            "SELECT MAX(recorded_at) FROM viessmann_snapshots"
-        ).fetchone()[0]
-    return {
-        "homematic": room_timestamp,
-        "viessmann": viessmann_timestamp,
-    }
+    from src.repository import MonitoringRepository
+
+    return MonitoringRepository(database_path).latest_timestamps()
 
 
 def get_viessmann_snapshot_history(database_path: Union[str, Path]) -> list[dict[str, object]]:
@@ -104,29 +77,9 @@ def get_viessmann_snapshot_history(database_path: Union[str, Path]) -> list[dict
 def get_viessmann_feature_history(
     database_path: Union[str, Path], hours: int = 24
 ) -> list[dict[str, object]]:
-    initialize_database(database_path)
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
-    with sqlite3.connect(database_path) as connection:
-        connection.row_factory = sqlite3.Row
-        rows = connection.execute(
-            """
-            SELECT recorded_at, device_id, model, features_json
-            FROM viessmann_snapshots
-            WHERE recorded_at >= ?
-              AND (lower(model) LIKE '%vitocal%' OR lower(model) LIKE '%heatpump%')
-            ORDER BY recorded_at ASC
-            """,
-            (cutoff,),
-        ).fetchall()
-    return [
-        {
-            "recorded_at": row["recorded_at"],
-            "device_id": row["device_id"],
-            "model": row["model"],
-            "features": json.loads(row["features_json"]),
-        }
-        for row in rows
-    ]
+    from src.repository import MonitoringRepository
+
+    return MonitoringRepository(database_path).viessmann_features(hours)
 
 
 SCHEMA = """

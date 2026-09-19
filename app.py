@@ -1,5 +1,6 @@
 from datetime import datetime
 from html import escape
+from urllib.parse import quote
 
 import pandas as pd
 import streamlit as st
@@ -16,6 +17,11 @@ from src.weather import LOCATION_NAME, fetch_forecast, format_day, weather_label
 
 
 APP_NAME = "HomeClimate Dashboard"
+
+
+def render_embedded_html(markup: str, height: int) -> None:
+    source = "data:text/html;charset=utf-8," + quote(markup)
+    st.iframe(source, width="stretch", height=height)
 
 
 def format_timestamp(value: object) -> str:
@@ -827,7 +833,7 @@ def render_heat_pump_schema(snapshot: object) -> None:
       </svg>
     </div>
     '''
-    st.html(schema)
+    render_embedded_html(schema, 520)
 
 
 def render_clear_heat_pump_schema(snapshot: object) -> None:
@@ -943,7 +949,7 @@ def render_clear_heat_pump_schema(snapshot: object) -> None:
             </svg>
         </div>
         '''
-        st.html(schema)
+        render_embedded_html(schema, 620)
 
 
 def render_viessmann_component_schema(snapshot: object) -> None:
@@ -1044,7 +1050,7 @@ def render_viessmann_component_schema(snapshot: object) -> None:
             </svg>
         </div>
         '''
-        st.html(schema)
+        render_embedded_html(schema, 500)
 
 
 def render_heat_pump_kpis(snapshot: object, database_path: str) -> None:
@@ -1239,7 +1245,7 @@ def render_heating_curve(snapshot: object) -> None:
               <text x="14" y="125" text-anchor="middle" transform="rotate(-90 14 125)" class="axis-title">Vorlauf-Soll</text>
             </svg>
             '''
-            st.html(curve_markup)
+            render_embedded_html(curve_markup, 275)
 
 
 def render_heat_pump_report(snapshot: object, history: list[dict[str, object]]) -> None:

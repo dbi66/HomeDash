@@ -10,6 +10,7 @@ from src.config import DATABASE_PATH, PROVIDER
 from src.dashboard_views import render_compact_chart, render_history, render_overview, render_overview_graphs, render_room_report, render_room_tiles, render_valve_status_table
 from src.hmip_provider import HomematicProviderError, load_home, get_room_readings as get_hmip_readings
 from src.mock_provider import get_room_readings
+from src.monitoring import HeatPumpMetrics, SystemAlert, build_heat_pump_metrics, build_system_alerts
 from src.room_layout import BASE_LEVEL, UNASSIGNED, UPSTAIRS, group_readings_by_level
 from src.viessmann_heatpump import feature_values, heat_pump_snapshots_from_inventory, read_heat_pumps, report_sections, system_map
 from src.viessmann_provider import ViessmannProviderError, load_client, read_inventory
@@ -1346,6 +1347,56 @@ def render_weather_report() -> None:
     st.markdown(f'<div class="weather-grid">{"".join(cards)}</div>', unsafe_allow_html=True)
 
 
+def render_monitoring_summary(
+    readings: list[dict[str, object]],
+    database_path: str,
+    timestamps: dict[str, str | None],
+) -> None:
+    heat_pumps = heat_pump_snapshots_from_inventory(get_latest_viessmann_snapshots(database_path))
+    metrics: HeatPumpMetrics | None = None
+    if heat_pumps:
+        metrics = build_heat_pump_metrics(
+            heat_pumps[0],
+            get_viessmann_feature_history(database_path, 24),
+        )
+    alerts: list[SystemAlert] = build_system_alerts(readings, timestamps, metrics)
+    st.markdown('<div class="level-heading">Systemstatus</div>', unsafe_allow_html=True)
+    if not alerts:
+        st.success("Keine aktuellen Warnungen. Datenquellen und Heizbetrieb unauffällig.")
+    for alert in alerts:
+        message = f"**{alert.title}**  \n{alert.detail}"
+        if alert.severity == "warning":
+            st.warning(message)
+        elif alert.severity == "error":
+            st.error(message)
+        else:
+            st.info(message)
+
+    if metrics is None:
+        return
+    metric_columns = st.columns(4)
+    metric_values = (
+        ("Energie heute", f"{metrics.produced_energy_today_kwh:.1f} kWh", "erzeugt"),
+        ("Stromkosten heute", f"{metrics.daily_energy_cost:.2f} €" if metrics.daily_energy_cost is not None else "n/a", "bei 0,30 €/kWh"),
+        ("Verdichterstarts", f"{metrics.starts_24h:.0f}" if metrics.starts_24h is not None else "n/a", "letzte 24h"),
+        ("Ø Zyklusdauer", f"{metrics.average_cycle_minutes:.1f} min" if metrics.average_cycle_minutes is not None else "n/a", "je Verdichterstart"),
+    )
+    for column, (label, value, detail) in zip(metric_columns, metric_values):
+        with column:
+            st.metric(label, value, help=detail)
+
+    below_target = [
+        reading for reading in readings
+        if float(reading["target_temperature"]) - float(reading["current_temperature"]) > 0.5
+    ]
+    st.caption(
+        f"Heizungswirkung: {len(below_target)} Räume liegen mehr als 0,5 °C unter dem Ziel. "
+        f"SPF gesamt: {metrics.spf_total:.1f} · Betriebsmodus: {metrics.operating_mode}."
+        if metrics.spf_total is not None
+        else f"Heizungswirkung: {len(below_target)} Räume liegen mehr als 0,5 °C unter dem Ziel."
+    )
+
+
 def render_home_dashboard(readings: list[dict[str, object]], database_path: str, provider: str) -> None:
     timestamps = get_latest_data_timestamps(database_path)
     latest_room = f"{format_timestamp(timestamps['homematic'])} ({format_data_age(timestamps['homematic'])})"
@@ -1357,6 +1408,7 @@ def render_home_dashboard(readings: list[dict[str, object]], database_path: str,
         f'<div class="home-hero__meta">{escape(now)} · Datenprovider {escape(provider)} · Automatische Aktualisierung im festen Raster</div></section>',
         unsafe_allow_html=True,
     )
+    render_monitoring_summary(readings, database_path, timestamps)
 
     room_count = len(readings)
     open_valves = sum(float(reading["valve_position"]) > 0 for reading in readings)

@@ -11,6 +11,7 @@ from src.dashboard_views import render_compact_chart, render_history, render_ove
 from src.display import format_data_age, format_timestamp
 from src.hmip_provider import HomematicProviderError, load_home, get_room_readings as get_hmip_readings
 from src.home_dashboard import render_home_dashboard as render_home_dashboard_page
+from src.heat_pump_page import render_heat_pump_page
 from src.mock_provider import get_room_readings
 from src.monitoring import HeatPumpMetrics, SystemAlert, build_heat_pump_metrics, build_system_alerts
 from src.room_layout import BASE_LEVEL, UNASSIGNED, UPSTAIRS, group_readings_by_level
@@ -1661,7 +1662,7 @@ if function_choice == "Wärmepumpe":
         get_latest_viessmann_snapshots(DATABASE_PATH)
     )
     if archived_heat_pumps:
-        render_heat_pump_report(archived_heat_pumps[0], snapshot_history)
+        render_heat_pump_page(archived_heat_pumps[0], snapshot_history, render_heat_pump_report)
     else:
         st.info("Noch keine Wärmepumpen-Daten vorhanden. Bitte zuerst in Einstellungen einlesen.")
     st.stop()

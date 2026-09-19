@@ -6,7 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from src.database import get_latest_data_timestamps, get_latest_readings, get_latest_viessmann_snapshots, get_room_events, get_viessmann_feature_history, get_viessmann_snapshot_history, save_readings, save_viessmann_snapshots
-from src.config import DATABASE_PATH, PROVIDER
+from src.config import DATABASE_PATH, HOMEDASH_ELECTRICITY_PRICE, PROVIDER
 from src.dashboard_views import render_compact_chart, render_history, render_overview, render_overview_graphs, render_room_report, render_room_tiles, render_valve_status_table
 from src.hmip_provider import HomematicProviderError, load_home, get_room_readings as get_hmip_readings
 from src.mock_provider import get_room_readings
@@ -1358,6 +1358,7 @@ def render_monitoring_summary(
         metrics = build_heat_pump_metrics(
             heat_pumps[0],
             get_viessmann_feature_history(database_path, 24),
+            electricity_price=HOMEDASH_ELECTRICITY_PRICE,
         )
     alerts: list[SystemAlert] = build_system_alerts(readings, timestamps, metrics)
     st.markdown('<div class="level-heading">Systemstatus</div>', unsafe_allow_html=True)

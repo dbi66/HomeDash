@@ -78,6 +78,8 @@ Choose `Viessmann-Daten einlesen` to archive the complete feature inventory in `
 
 The Homematic collector runs every 15 minutes by default. The dashboard `Neu laden` button only rerenders the current page and never triggers a provider request. Development checks are available with `python -m pytest -q` and `python -m ruff check app.py src scripts tests`.
 
+Set `HOMEDASH_ELECTRICITY_PRICE` to override the default electricity price of `0.30` EUR/kWh used by the Home energy-cost KPI.
+
 ## Prioritized Roadmap
 
 The following ten steps are ordered by operational risk first, then by user value and maintainability. Each step should be completed with tests and a short system check before starting the next one.

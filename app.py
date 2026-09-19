@@ -17,6 +17,7 @@ from src.room_layout import BASE_LEVEL, UNASSIGNED, UPSTAIRS, group_readings_by_
 from src.viessmann_heatpump import feature_values, heat_pump_snapshots_from_inventory, read_heat_pumps, report_sections, system_map
 from src.viessmann_provider import ViessmannProviderError, load_client, read_inventory
 from src.weather import LOCATION_NAME, fetch_forecast, format_day, weather_label
+from src.weather_view import render_weather_report as render_weather_page
 
 
 APP_NAME = "HomeClimate Dashboard"
@@ -1651,7 +1652,7 @@ if st.session_state.get("show_settings", False):
     settings_dialog()
 
 if function_choice == "Wetter":
-    render_weather_report()
+    render_weather_page()
     st.stop()
 
 if function_choice == "Wärmepumpe":

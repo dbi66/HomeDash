@@ -10,6 +10,7 @@ from src.config import DATABASE_PATH, HOMEDASH_ELECTRICITY_PRICE, PROVIDER
 from src.dashboard_views import render_compact_chart, render_history, render_overview, render_overview_graphs, render_room_report, render_room_tiles, render_valve_status_table
 from src.display import format_data_age, format_timestamp
 from src.hmip_provider import HomematicProviderError, load_home, get_room_readings as get_hmip_readings
+from src.home_dashboard import render_home_dashboard as render_home_dashboard_page
 from src.mock_provider import get_room_readings
 from src.monitoring import HeatPumpMetrics, SystemAlert, build_heat_pump_metrics, build_system_alerts
 from src.room_layout import BASE_LEVEL, UNASSIGNED, UPSTAIRS, group_readings_by_level
@@ -1692,7 +1693,7 @@ if page == "overview":
     if st.session_state.get("show_all_graphs", False):
         render_overview_graphs(room_names, DATABASE_PATH)
     else:
-        render_home_dashboard(readings, str(DATABASE_PATH), PROVIDER)
+        render_home_dashboard_page(readings, str(DATABASE_PATH), PROVIDER)
     st.stop()
 
 

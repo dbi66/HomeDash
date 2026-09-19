@@ -1,4 +1,4 @@
-# HomeClimate Dashboard v0.5.3
+# HomeClimate Dashboard v0.9
 
 HomeClimate Dashboard is a local Streamlit app for monitoring a Homematic IP heating system. It reads room temperatures, target temperatures, humidity, and underfloor-heating valve positions from a Homematic IP Access Point such as the HmIP-HAP2.
 
@@ -12,6 +12,9 @@ This release consolidates the project to a single runtime model:
 - One Homematic collector process that records readings every 15 minutes
 - One Viessmann collector process that records heat-pump snapshots every 30 minutes
 - One user-level systemd service for autostart on boot
+- Repository layer for monitoring queries and feature access
+- Automated retry/backoff for scheduled provider collectors
+- Freshness, alarm, energy, heating-effectiveness, and maintenance metrics on Home
 
 The older development/production split was removed to simplify deployment and maintenance.
 
@@ -44,6 +47,10 @@ The app is read-only with respect to heating settings. It reports target tempera
 - Tile-based Home start page with room, weather, and heat-pump summaries
 - Viessmann heat-pump schematics, KPIs, heating curve, and energy indicators
 - Page-specific help and a rerender-only `Neu laden` action
+- Central system-status alerts for stale data, heating issues, and missing energy input
+- Configurable electricity price for daily energy-cost KPIs
+- Deployment healthcheck, HTTP smoke test, and verified SQLite backup command
+- Pytest integration contracts and Ruff quality gate
 
 ## Navigation
 
@@ -90,39 +97,39 @@ python scripts/backup_database.py --verify
 
 The healthcheck verifies SQLite integrity, data freshness against the configured collector intervals, and HTTP availability of Streamlit. The smoke test verifies the dashboard response markers. The backup command creates and verifies a consistent SQLite copy. Run these commands from a systemd timer or external monitor for unattended observability.
 
-## Prioritized Roadmap
+## Roadmap Status
 
-The following ten steps are ordered by operational risk first, then by user value and maintainability. Each step should be completed with tests and a short system check before starting the next one.
+The original ten-step roadmap has been implemented through v0.9. Remaining improvements are tracked as follow-up work.
 
-1. **Make data freshness and failures explicit**
+1. **Completed: Make data freshness and failures explicit**
   Add a shared health model for Homematic, Viessmann, and weather data. Show `aktuell`, `veraltet`, `keine Daten`, rate-limit errors, and the last successful collection time consistently on every relevant page.
 
-2. **Build a central alarm and status center**
+2. **Completed: Build a central alarm and status center**
   Combine stale data, offline devices, open valves, rooms below target, active heating rod, abnormal temperatures, and collector failures into one prioritized status tile on `Home`.
 
-3. **Add reliable energy and cost analytics**
+3. **Completed: Add reliable energy and cost analytics**
   Track daily, weekly, and monthly supplied energy, produced heat, SPF/COP, heating-rod share, hot-water share, and configurable electricity costs. Clearly distinguish calendar-day counters from rolling 24-hour values.
 
-4. **Add cross-module heating effectiveness analysis**
+4. **Completed: Add cross-module heating effectiveness analysis**
   Correlate weather, heating curve, supply temperature, room temperatures, target temperatures, and valve positions. Highlight rooms that remain below target despite active heating demand.
 
-5. **Complete operational maintenance metrics**
+5. **Completed: Complete operational maintenance metrics**
   Add compressor cycling, average runtime per start, fan/pump runtime, defrost count and duration, operating-mode history, and maintenance warnings.
 
-6. **Split the Streamlit application into page modules**
+6. **Completed: Split the Streamlit application into page modules**
   Move Home, Wetter, Wärmepumpe, Raumdetail, and reports out of `app.py`. Keep routing, shared session state, and common layout in a small application shell.
 
-7. **Introduce typed domain and provider models**
+7. **Completed: Introduce typed domain and provider models**
   Replace untyped `dict[str, object]` payloads and scattered feature-name strings with typed room, weather, heat-pump, KPI, and sensor-mapping models. Keep provider-specific raw JSON behind adapters.
 
-8. **Create a repository and migration layer for SQLite**
-  Separate SQL, migrations, JSON decoding, and domain logic. Add schema versions, transaction boundaries, retention policies, and indexes for time-window KPI queries.
+8. **In progress: Complete repository and migration layer for SQLite**
+  The monitoring repository is implemented. Schema versioning, migrations, retention policies, and broader SQL/domain separation remain.
 
-9. **Expand automated quality and integration tests**
-  Add provider fixtures, collector retry tests, sensor-mapping tests, KPI edge cases, stale-data tests, weather fallback tests, and browser smoke tests for desktop and mobile routes.
+9. **Completed: Expand automated quality and integration tests**
+  Provider contracts, retry behavior, sensor mapping, KPI edge cases, stale-data checks, weather contracts, HTTP smoke checks, and desktop/mobile browser checks are covered.
 
-10. **Harden deployment and observability**
-   Move all secrets to a protected EnvironmentFile, add structured rotating logs, health checks, graceful collector shutdown, backup verification, and a documented upgrade/rollback procedure.
+10. **In progress: Harden deployment and observability**
+  Healthchecks and backup verification are implemented. Structured rotating logs, graceful collector shutdown, and a documented upgrade/rollback procedure remain. The tracked systemd template uses an external protected EnvironmentFile for secrets.
 
 ## Requirements
 

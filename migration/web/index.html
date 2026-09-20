@@ -45,6 +45,8 @@
     .chart-grid .card { overflow:hidden; }
     .forecast-grid { display:grid; gap:10px; grid-template-columns:repeat(4,minmax(0,1fr)); }
     .forecast-day { min-width:0; }
+    .schema-card { overflow-x:auto; }
+    .schema-card svg { display:block; min-width:720px; width:100%; }
     .actual::before { color:#c2410c; content:"━ "; font-weight:900; }
     .target::before { color:#64748b; content:"┄ "; font-weight:900; }
     .error { border-color:#fecaca; color:#991b1b; }
@@ -70,6 +72,6 @@
     <section class="grid" id="metrics"></section>
     <div id="content"><p class="empty">Daten werden geladen ...</p></div>
   </main>
-  <script src="/app.js?v=0.10.2"></script>
+  <script src="/app.js?v=0.10.4"></script>
 </body>
 </html>

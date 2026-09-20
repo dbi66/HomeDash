@@ -135,7 +135,10 @@ Vergleich und Dev-Erweiterung 2026-09-20:
 
 - Wertegleichheit bestätigt: 14 Räume, Sollwerte, Feuchte, Ventilstellung, Durchschnittstemperatur und Wärmepumpen-Kernwerte stimmen zwischen `8503` und `8501` überein.
 - Dev geprüft und ergänzt: Home, Raumvergleich, Raumbericht, Raumdetail mit Historie, 14 gemeinsame Temperaturdiagramme, Wärmepumpenstatus und 7-Tage-Wetterbericht.
-- Die Dev-Diagramme bieten zunächst Ist-/Zieltemperatur; Feuchte und Ventilreihen sowie die erweiterten Wärmepumpen-Rohdaten bleiben der nächsten UI-Ausbaustufe vorbehalten.
+- Raumbericht erweitert: bestehende Tabelle bleibt erhalten und wird durch Temperatur- und Feuchte-Spidercharts ergänzt.
+- Wärmepumpenansicht erweitert: beide Schemata und 30 KPI-/Featurewerte aus dem gemeinsamen Produktionsberechnungspfad ergänzt.
+- Der Dev-Launcher weist Collector auf Nicht-Produktionsports ab und verhindert per `flock` einen zweiten Collector-Satz.
+- Die Dev-Diagramme bieten zunächst Ist-/Zieltemperatur; Feuchte- und Ventilreihen in den Zeitdiagrammen sowie der vollständige Rohdaten-Explorer bleiben der nächsten UI-Ausbaustufe vorbehalten.
 - Der produktive Streamlit-Fallback bleibt bis zur Abnahme der erweiterten Messreihenauswahl aktiv.
 
 Reihenfolge der Views:

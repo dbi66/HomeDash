@@ -25,6 +25,15 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 if [ "$RUN_COLLECTORS" = "1" ]; then
+    if [ "$PORT" != "8501" ]; then
+        echo "Collectors may only run on production port 8501." >&2
+        exit 1
+    fi
+    exec 9>"$PROJECT_ROOT/data/.homedash-collectors.lock"
+    if ! flock -n 9; then
+        echo "Another HomeDash collector set is already active." >&2
+        exit 1
+    fi
     "$PYTHON_BIN" scripts/collect_snapshot.py --interval "$COLLECTOR_INTERVAL" &
     COLLECTOR_PID=$!
 

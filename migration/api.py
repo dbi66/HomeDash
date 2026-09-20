@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,10 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
 from fastapi.staticfiles import StaticFiles
+
+from src.models import HeatPumpSnapshot
+from src.monitoring import build_heat_pump_metrics
+from src.viessmann_heatpump import feature_values
 
 
 DATABASE_PATH = Path(os.getenv("HOMEDASH_DATABASE", "data/heating_data.db"))
@@ -254,6 +259,55 @@ def heat_pump() -> HeatPumpResponse | None:
     except (FileNotFoundError, sqlite3.Error) as error:
         raise HTTPException(status_code=503, detail=f"Database unavailable: {error}") from error
     return HeatPumpResponse(**raw_heat_pump) if raw_heat_pump else None
+
+
+@app.get("/api/v1/heat-pump/report")
+def heat_pump_report() -> dict[str, Any] | None:
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    try:
+        with _connect_read_only() as connection:
+            latest_row = connection.execute(
+                """
+                SELECT device_id, model, online, features_json, recorded_at
+                FROM viessmann_snapshots
+                WHERE lower(model) LIKE '%vitocal%' OR lower(model) LIKE '%heatpump%'
+                ORDER BY recorded_at DESC
+                LIMIT 1
+                """
+            ).fetchone()
+            if latest_row is None:
+                return None
+            history_rows = connection.execute(
+                """
+                SELECT recorded_at, features_json
+                FROM viessmann_snapshots
+                WHERE recorded_at >= ?
+                  AND (lower(model) LIKE '%vitocal%' OR lower(model) LIKE '%heatpump%')
+                ORDER BY recorded_at
+                """,
+                (cutoff,),
+            ).fetchall()
+    except (FileNotFoundError, sqlite3.Error) as error:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {error}") from error
+
+    snapshot = HeatPumpSnapshot(
+        device_id=latest_row["device_id"],
+        model=latest_row["model"],
+        online=bool(latest_row["online"]),
+        features=json.loads(latest_row["features_json"]),
+    )
+    history = [
+        {"recorded_at": row["recorded_at"], "features": json.loads(row["features_json"])}
+        for row in history_rows
+    ]
+    return {
+        "model": snapshot.model,
+        "device_id": snapshot.device_id,
+        "online": snapshot.online,
+        "recorded_at": latest_row["recorded_at"],
+        "metrics": asdict(build_heat_pump_metrics(snapshot, history)),
+        "features": feature_values(snapshot),
+    }
 
 
 @app.get("/api/v1/weather")

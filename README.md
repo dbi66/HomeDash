@@ -196,6 +196,10 @@ Die ausgegebene `https://...ts.net`-Adresse kann im mobilen Browser verwendet we
 
 Der aktuelle Tailscale-Zugriff ist auf das Dashboard begrenzt. Eine spätere Verschärfung kann HomeDash zusätzlich ausschließlich an `127.0.0.1` binden; der Tailscale-Serve-Proxy bleibt dann der einzige externe Einstiegspunkt.
 
+## Migration nach 0.9a
+
+Die Streamlit-Version `0.9a` ist als `v0.9a` archiviert. Die schrittweise Zielarchitektur mit FastAPI, SvelteKit, unabhängigen Collectors, SQLite-Migrationen, Parallelbetrieb und Rollback ist in [MIGRATION_PLAN.md](MIGRATION_PLAN.md) beschrieben.
+
 ## Systemd-Betrieb
 
 Das Template `scripts/homedash.service` ist für einen Benutzer-Service vorbereitet. Vor der Aktivierung müssen `WorkingDirectory`, Datenbankpfad und der Pfad zur geschützten Viessmann-Environment-Datei zur Installation passen.

@@ -55,7 +55,7 @@ def test_migration_api_serves_home_shell() -> None:
     response = TestClient(app).get("/")
 
     assert response.status_code == 200
-    assert "Migration Dashboard" in response.text
+    assert "HomeClimate Dashboard" in response.text
 
 
 def test_migration_api_serves_frontend_entrypoint() -> None:

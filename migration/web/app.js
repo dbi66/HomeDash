@@ -1,4 +1,6 @@
 const state = { home: null, rooms: [], view: "home", chartSeries: { current_temperature: true, target_temperature: true, humidity: true, valve_position: true } };
+const isProduction = window.location.port === "8501";
+const appLabel = isProduction ? "Produktiv" : "Migrationstest";
 
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -21,7 +23,17 @@ function setView(view) {
 }
 
 function renderHeader() {
-  document.querySelector("#freshness").textContent = `Homematic: ${state.home.latest_homematic ?? "nicht verfügbar"} · Viessmann: ${state.home.latest_viessmann ?? "nicht verfügbar"}`;
+  document.querySelector("#app-version").textContent = `HomeClimate · ${appLabel}`;
+  document.querySelector("#app-description").textContent = isProduction ? "Produktiver read-only Datenbestand" : "Read-only Vorschau auf den produktiven Datenbestand";
+  document.querySelector("#app-status").textContent = `${window.location.port || "80"} · API`;
+  const formatFreshness = (timestamp) => {
+    if (!timestamp) return "nicht verfügbar";
+    const date = new Date(timestamp);
+    const minutes = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000));
+    const formatted = date.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
+    return `${formatted} (vor ${minutes} Min.)`;
+  };
+  document.querySelector("#freshness").textContent = `Homematic: ${formatFreshness(state.home.latest_homematic)} · Viessmann: ${formatFreshness(state.home.latest_viessmann)}`;
 }
 
 function renderHome() {
@@ -31,7 +43,7 @@ function renderHome() {
     metric("Räume", data.room_count, `${data.open_valves} Ventile geöffnet`),
     metric("Ø Raumtemperatur", data.average_temperature == null ? "n/a" : `${data.average_temperature.toFixed(1)} °C`, "aktueller Bestand"),
     metric("Datenzugriff", "read-only", "keine Provider-Abfragen"),
-    metric("Teststand", "0.10.0-dev", "Migration auf Port 8503")
+    metric(isProduction ? "Betriebsstand" : "Teststand", isProduction ? "Produktiv" : "Migration", `API auf Port ${window.location.port || "80"}`)
   ].join("");
   document.querySelector("#content").innerHTML = `<section class="section"><h2>Raumstatus</h2><div class="rooms">${state.rooms.map(roomCard).join("")}</div></section>${heatPumpCard(data.heat_pump)}`;
 }

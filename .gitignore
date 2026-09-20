@@ -8,6 +8,7 @@ xcuserdata/
 data/*.db
 data/backups/
 data/logs/
+data/.homedash-collectors.lock
 .env
 config.ini
 data/vicare_token.json

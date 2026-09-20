@@ -22,3 +22,20 @@ def test_collection_run_records_success(tmp_path) -> None:
             (run_id,),
         ).fetchone()
     assert row == ("homematic", "success", 14, 3000, None)
+
+
+def test_new_run_aborts_previous_running_run(tmp_path) -> None:
+    database_path = tmp_path / "collection-runs.db"
+
+    first_run = start_collection_run(database_path, "viessmann", "2026-09-20T12:00:00+00:00")
+    second_run = start_collection_run(database_path, "viessmann", "2026-09-20T12:05:00+00:00")
+
+    with sqlite3.connect(database_path) as connection:
+        rows = connection.execute(
+            "SELECT id, status, error FROM collection_runs WHERE provider = ? ORDER BY id",
+            ("viessmann",),
+        ).fetchall()
+    assert rows == [
+        (first_run, "aborted", "Collector stopped before completing the run."),
+        (second_run, "running", None),
+    ]

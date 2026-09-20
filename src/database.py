@@ -163,6 +163,14 @@ def initialize_database(database_path: Union[str, Path]) -> None:
 def start_collection_run(database_path: Union[str, Path], provider: str, started_at: str) -> int:
     initialize_database(database_path)
     with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            UPDATE collection_runs
+            SET finished_at = ?, status = 'aborted', error = 'Collector stopped before completing the run.'
+            WHERE provider = ? AND status = 'running'
+            """,
+            (started_at, provider),
+        )
         cursor = connection.execute(
             "INSERT INTO collection_runs (provider, started_at, status) VALUES (?, ?, ?)",
             (provider, started_at, "running"),

@@ -171,5 +171,11 @@ def build_system_alerts(
         if metrics.compressor_active and (metrics.current_heat_kw or 0) <= 0:
             alerts.append(SystemAlert("warning", "Verdichter ohne Wärmeleistung", "Der Verdichter ist aktiv, aber aktuell wird keine Wärmeleistung gemeldet."))
         if metrics.supplied_energy_today_kwh <= 0 and metrics.produced_energy_today_kwh > 0:
-            alerts.append(SystemAlert("info", "Energieeingang nicht verfügbar", "Die Wärmeerzeugung ist vorhanden, aber der elektrische Tagesverbrauch fehlt."))
+            alerts.append(
+                SystemAlert(
+                    "info",
+                    "Stromverbrauch nicht gemeldet",
+                    f"Viessmann meldet heute {metrics.supplied_energy_today_kwh:.1f} kWh Stromverbrauch, obwohl {metrics.produced_energy_today_kwh:.1f} kWh Wärme erzeugt wurden. Verbrauchszähler und Viessmann-Datenversorgung prüfen.",
+                )
+            )
     return alerts

@@ -27,6 +27,10 @@ APP_THEME = """
         gap: 0.75rem;
     }
 
+    [data-testid="stColumn"] {
+        min-width: 0 !important;
+    }
+
     .stApp h3,
     .stApp [data-testid="stMetricLabel"],
     .stApp [data-testid="stMetricValue"],
@@ -96,12 +100,29 @@ APP_THEME = """
     .home-tile__detail { color: #486581; font-size: 0.76rem; line-height: 1.45; margin-top: 0.15rem; }
 
     .stButton > button {
+        box-sizing: border-box !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
         white-space: normal !important;
         line-height: 1.3 !important;
         text-align: left !important;
         padding: 0.65rem 0.7rem !important;
         word-break: break-word !important;
         overflow-wrap: anywhere !important;
+    }
+
+    [class*="st-key-overview-room-"] button {
+        min-height: 132px !important;
+    }
+
+    [class*="st-key-overview-room-"] button p {
+        line-height: 1.45 !important;
+        margin: 0 !important;
+    }
+
+    [data-testid="stHorizontalBlock"]:has([class*="st-key-overview-room-"]) {
+        margin-top: 0.65rem !important;
     }
 
     .home-tile-grid [data-testid="stButton"] button {
@@ -183,7 +204,9 @@ APP_THEME = """
         color: #102a43;
         font-size: 1.35rem;
         font-weight: 750;
-        margin: 0.5rem 0 0.25rem;
+        line-height: 1.25;
+        margin: 0.9rem 0 0.55rem;
+        padding: 0.1rem 0;
     }
 
     .heat-map-section {
@@ -351,7 +374,7 @@ APP_THEME = """
 
         .room-grid {
             gap: 0.5rem;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: 1fr;
             margin: 0.75rem 0 1.25rem;
         }
 
@@ -363,9 +386,9 @@ APP_THEME = """
         }
 
         [data-testid="stColumn"] {
-            flex: 0 0 calc(50% - 0.25rem);
+            flex: 0 0 100%;
             min-width: 0;
-            width: calc(50% - 0.25rem) !important;
+            width: 100% !important;
         }
 
         [data-testid="stHorizontalBlock"]:has(.dashboard-header) {
@@ -379,6 +402,11 @@ APP_THEME = """
 
         [data-testid="stHorizontalBlock"]:has([data-testid="stVegaLiteChart"]) [data-testid="stColumn"] {
             flex: 0 0 100%;
+            width: 100% !important;
+        }
+
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-overview-room-"]) [data-testid="stColumn"] {
+            flex: 0 0 100% !important;
             width: 100% !important;
         }
 

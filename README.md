@@ -1,327 +1,282 @@
-# HomeClimate Dashboard v0.9
+# HomeClimate Dashboard
 
-HomeClimate Dashboard is a local Streamlit app for monitoring a Homematic IP heating system. It reads room temperatures, target temperatures, humidity, and underfloor-heating valve positions from a Homematic IP Access Point such as the HmIP-HAP2.
+Lokales Streamlit-Dashboard zur Beobachtung einer Homematic-IP-Heizung und optional einer Viessmann-Wärmepumpe. Die Anwendung liest Daten, speichert sie lokal in SQLite und verändert keine Heizungs- oder Geräteeinstellungen.
 
-## Current Architecture
+## Funktionen
 
-This release consolidates the project to a single runtime model:
+- Raumübersicht nach Etage mit Temperatur, Luftfeuchte, Zieltemperatur, Ventilstellung und Trends
+- Raumdetail mit Historie, Diagrammen und Ereignissen
+- Raumbericht und Diagramme für alle Räume
+- Wettervorhersage für Aystetten (Open-Meteo)
+- Viessmann-Inventory, Wärmepumpenbericht, Systemübersicht und Energiekennzahlen
+- Systemstatus für veraltete Daten, Heizprobleme und fehlende Verbrauchswerte
+- Mock-Modus für Entwicklung ohne Homematic-Hardware
+- Responsive Darstellung für Desktop und mobile Browser
+- Lokale SQLite-Historie und verifizierbare Backups
 
-- One Streamlit dashboard instance
-- One SQLite database: `data/heating_data.db`
-- One launcher script: `scripts/run_dashboard.sh`
-- One Homematic collector process that records readings every 15 minutes
-- One Viessmann collector process that records heat-pump snapshots every 30 minutes
-- One user-level systemd service for autostart on boot
-- Repository layer for monitoring queries and feature access
-- Shared provider status/result contract for weather and integration health
-- Compact mobile-first dashboard presentation with shorter room labels and tighter UI spacing
-- Automated retry/backoff for scheduled provider collectors
-- Freshness, alarm, energy, heating-effectiveness, and maintenance metrics on Home
+## Architektur
 
-The older development/production split was removed to simplify deployment and maintenance.
-
-The app is read-only with respect to heating settings. It reports target temperatures but never writes them back to Homematic IP.
-
-The dashboard presentation is tuned for a compact, scan-friendly overview on desktop and mobile: room tiles use shortened labels, tighter spacing, and cleaner wrapping so status information remains readable without noisy line breaks.
-
-## Current Features
-
-- Live Homematic IP room readings
-- Mock provider for development without hardware
-- Room overview grouped by `Obergeschoss` and `Erdgeschoss`
-- Compact room tiles with:
-  - Current temperature
-  - Humidity
-  - Target temperature
-  - Valve thermometer, mapped from the associated floor-heating controller channel
-  - Five-state temperature and humidity trend arrows calculated over the last 30 minutes: red `↑`, orange `↗`, gray `→`, light-blue `↘`, and blue `↓`
-- Room detail view with historical charts and event log
-- Compact charts for all rooms
-- Room report with spider charts for current temperature and humidity across all rooms
-- Single-service user setup with automatic startup and stable LAN access
-- Graph scale defaults:
-  - Temperature: `10-30 C`
-  - Humidity and valve position: `0-100%`
-  - Optional `Fit data` mode
-- Homematic device and channel hierarchy in `Einstellungen`
-- Read-only Viessmann inventory for installations, gateways, devices, and exposed feature names
-- Local or trusted-network access through the dashboard launcher
-- SQLite history for room readings, events, target reports, and Homematic snapshots
-- Seven-day weather forecast for Aystetten (86482)
-- Tile-based Home start page with room, weather, and heat-pump summaries
-- Viessmann heat-pump schematics, KPIs, heating curve, and energy indicators
-- Page-specific help and a rerender-only `Neu laden` action
-- Central system-status alerts for stale data, heating issues, and missing energy input
-- Configurable electricity price for daily energy-cost KPIs
-- Deployment healthcheck, HTTP smoke test, and verified SQLite backup command
-- Pytest integration contracts and Ruff quality gate
-
-## Navigation
-
-The top navigation provides:
-
-- `Home`: tile-based start page with weather, heat-pump, data-status, and room summaries
-- `Raumdetail`: selected room history, charts, and event log
-- `Raumbericht`: current temperature and humidity spider charts for all rooms
-- `Alle Diagramme`: compact historical charts for all rooms
-- `Wärmepumpe`: human-readable read-only report for archived Viessmann heat-pump data and snapshot history
-- `Wetter`: seven-day forecast for Aystetten (86482)
-- `Einstellungen`: reread Homematic devices, inspect the device/channel hierarchy, and load Viessmann data
-- `Neu laden`: rerender the current page without triggering provider requests
-- `Hilfe`: explains the current page and its data-update behavior
-
-Click a room tile from `Home` to open its detail view.
-
-### Viessmann read-only inventory
-
-Installations with a Vitocal/Vitocell system can be inspected through PyViCare. Create an API key or client ID at the [Viessmann Climate Solutions Developer Portal](https://developer.viessmann-climatesolutions.com/start.html), then open `Einstellungen`, select the `Viessmann` tab, and enter the account email, password, API client ID, and token-file path:
-
-```bash
-export VIESSMANN_USERNAME="your-account-email"
-export VIESSMANN_PASSWORD="your-account-password"
-export VIESSMANN_CLIENT_ID="your-api-client-id"
-export VIESSMANN_TOKEN_FILE="data/vicare_token.json"
+```text
+Homematic IP  -┐
+               +-> Collector -> data/heating_data.db -> Streamlit-App
+Viessmann API -┘                                      +-> HomeDash UI
+Open-Meteo API ---------------------------------------> Wetterseite
 ```
 
-Choose `Viessmann-Daten einlesen` to archive the complete feature inventory in `viessmann_snapshots`. Choose `Wärmepumpe read-only einlesen` to read and archive the current heat-pump feature values. Open `Wärmepumpe` in the main navigation for the human-readable report and stored snapshot history. The module selects Viessmann heat-pump devices only, reads their exposed feature properties, and never calls a Viessmann write API or changes heating settings. Credentials and live heat-pump values remain in the current Streamlit session; the token file remains local. Environment variables remain available for unattended use.
+- `app.py` ist der dünne Einstiegspunkt und Router.
+- `src/` enthält Provider, Datenmodelle, Repository-Zugriff, Berechnungen und Views.
+- `scripts/collect_snapshot.py` speichert Homematic-Raumwerte und Snapshots.
+- `scripts/collect_viessmann.py` speichert Viessmann-Wärmepumpen-Snapshots.
+- `scripts/run_dashboard.sh` startet beide Collector und Streamlit in einem Prozessverbund.
+- `data/heating_data.db` ist die Standarddatenbank und wird nicht ins Repository eingecheckt.
 
-`scripts/run_dashboard.sh` also starts `scripts/collect_viessmann.py` in the background, which archives a Viessmann heat-pump snapshot every 30 minutes (override with `HOMEDASH_VIESSMANN_INTERVAL`, in seconds). It authenticates using the `VIESSMANN_USERNAME`, `VIESSMANN_PASSWORD`, `VIESSMANN_CLIENT_ID`, and `VIESSMANN_TOKEN_FILE` environment variables. The tracked systemd template loads them from `/home/dennis/.config/homedash/viessmann.env`; keep that file owner-readable only and never commit it.
+## Neuaufbau aus einem frischen Checkout
 
-The Homematic collector runs every 15 minutes by default. The dashboard `Neu laden` button only rerenders the current page and never triggers a provider request. Development checks are available with `python -m pytest -q` and `python -m ruff check app.py src scripts tests`.
+### 1. Repository und Python-Umgebung
 
-Set `HOMEDASH_ELECTRICITY_PRICE` to override the default electricity price of `0.30` EUR/kWh used by the Home energy-cost KPI.
-
-Deployment checks:
-
-```bash
-python scripts/healthcheck.py
-python scripts/smoke_test.py
-python scripts/backup_database.py --verify
-```
-
-The healthcheck verifies SQLite integrity, data freshness against the configured collector intervals, and HTTP availability of Streamlit. The smoke test verifies the dashboard response markers. The backup command creates and verifies a consistent SQLite copy. Run these commands from a systemd timer or external monitor for unattended observability.
-
-## Roadmap Status
-
-The original ten-step roadmap has been implemented through v0.9. Remaining improvements are tracked as follow-up work.
-
-1. **Completed: Make data freshness and failures explicit**
-  Add a shared health model for Homematic, Viessmann, and weather data. Show `aktuell`, `veraltet`, `keine Daten`, rate-limit errors, and the last successful collection time consistently on every relevant page.
-
-2. **Completed: Build a central alarm and status center**
-  Combine stale data, offline devices, open valves, rooms below target, active heating rod, abnormal temperatures, and collector failures into one prioritized status tile on `Home`.
-
-3. **Completed: Add reliable energy and cost analytics**
-  Track daily, weekly, and monthly supplied energy, produced heat, SPF/COP, heating-rod share, hot-water share, and configurable electricity costs. Clearly distinguish calendar-day counters from rolling 24-hour values.
-
-4. **Completed: Add cross-module heating effectiveness analysis**
-  Correlate weather, heating curve, supply temperature, room temperatures, target temperatures, and valve positions. Highlight rooms that remain below target despite active heating demand.
-
-5. **Completed: Complete operational maintenance metrics**
-  Add compressor cycling, average runtime per start, fan/pump runtime, defrost count and duration, operating-mode history, and maintenance warnings.
-
-6. **Completed: Split the Streamlit application into page modules**
-  Move Home, Wetter, Wärmepumpe, Raumdetail, and reports out of `app.py`. Keep routing, shared session state, and common layout in a small application shell.
-
-7. **Completed: Introduce typed domain and provider models**
-  Replace untyped `dict[str, object]` payloads and scattered feature-name strings with typed room, weather, heat-pump, KPI, and sensor-mapping models. Keep provider-specific raw JSON behind adapters.
-
-8. **Completed: Standardize provider contracts and degraded health semantics**
-  Shared `ProviderStatus` and `ProviderResult` handling is in place for weather and integration calls. Downstream code can distinguish `ok`, `degraded`, `error`, and `missing` states consistently.
-
-9. **In progress: Complete repository and migration layer for SQLite**
-  The monitoring repository is implemented. Schema versioning, migrations, retention policies, and broader SQL/domain separation remain.
-
-10. **Completed: Expand automated quality and integration tests**
-  Provider contracts, retry behavior, sensor mapping, KPI edge cases, stale-data checks, weather contracts, HTTP smoke checks, and desktop/mobile browser checks are covered.
-
-11. **In progress: Harden deployment and observability**
-  Healthchecks and backup verification are implemented. Structured rotating logs, graceful collector shutdown, and a documented upgrade/rollback procedure remain. The tracked systemd template uses an external protected EnvironmentFile for secrets.
-
-## Requirements
-
-- macOS or another Python 3 environment
-- Python 3.9 or newer
-- Homematic IP Access Point for live mode
-- A local Homematic IP auth configuration for live mode
-
-## Installation
+Python 3.10 oder neuer wird benötigt. Die Anwendung verwendet Typannotationen mit `|` und setzt deshalb mindestens Python 3.10 voraus.
 
 ```bash
 git clone https://github.com/dbi66/HomeDash.git
 cd HomeDash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-## Homematic IP Authentication
+Für Entwicklung und Tests zusätzlich:
 
-Generate a local auth configuration:
+```bash
+python -m pip install pytest ruff
+```
+
+### 2. Datenbank anlegen
+
+```bash
+python scripts/init_db.py
+```
+
+Der Befehl legt fehlende Tabellen an und führt vorhandene kleine Schema-Anpassungen aus. Bestehende Daten werden nicht gelöscht.
+
+### 3. Homematic-IP-Zugang einrichten
+
+Für den Live-Modus wird ein lokaler Homematic-IP-Access-Point benötigt:
 
 ```bash
 hmip_generate_auth_token
 ```
 
-Enter the Access Point SGTIN and press the blue system button on the physical Access Point when requested. The command creates `config.ini` locally.
+SGTIN des Access Points eingeben und bei Aufforderung die blaue Systemtaste drücken. Dadurch entsteht lokal eine `config.ini`. Diese Datei enthält Zugangsdaten, darf nicht geteilt und nicht committed werden.
 
-`config.ini` contains credentials and is ignored by Git. Do not share or commit it.
-
-## Start Locally
-
-Initialize the database and start the dashboard together with its data collector:
+Ohne Hardware kann zunächst der Mock-Modus verwendet werden:
 
 ```bash
-python3 scripts/init_db.py
+HOMEDASH_PROVIDER=mock python -m streamlit run app.py
+```
+
+### 4. Viessmann optional konfigurieren
+
+Für die Viessmann-Integration werden Zugangsdaten und eine Client-ID benötigt. Die Werte gehören in eine lokale, nur für den Benutzer lesbare Datei, nicht in das Repository:
+
+```bash
+mkdir -p ~/.config/homedash
+chmod 700 ~/.config/homedash
+cat > ~/.config/homedash/viessmann.env <<'EOF'
+VIESSMANN_USERNAME=account@example.com
+VIESSMANN_PASSWORD=secret
+VIESSMANN_CLIENT_ID=client-id
+VIESSMANN_TOKEN_FILE=/absolute/path/to/HomeDash/data/vicare_token.json
+EOF
+chmod 600 ~/.config/homedash/viessmann.env
+```
+
+Die Viessmann-Integration ist read-only. Sie liest die verfügbaren Features und schreibt keine Heizungsparameter.
+
+### 5. App starten
+
+Für den vollständigen Betrieb mit beiden Collectors:
+
+```bash
 sh scripts/run_dashboard.sh
 ```
 
-Open:
+Danach öffnen:
 
 ```text
 http://localhost:8501
 ```
 
-Run the dashboard without Homematic hardware (UI only, no collector):
-
-```bash
-HOMEDASH_PROVIDER=mock streamlit run app.py
-```
-
-## Autostart
-
-The project uses a single user service for automatic startup:
-
-```bash
-systemctl --user enable --now homedash.service
-```
-
-This service starts the dashboard and the collector together and binds to `0.0.0.0:8501`.
-
-Check the service and collector status:
-
-```bash
-systemctl --user status homedash.service
-```
-
-## Start
-
-There is one dashboard instance and one database in this release:
-
-```bash
-sh scripts/run_dashboard.sh
-```
-
-The dashboard uses `data/heating_data.db` by default. The launcher also starts the Homematic collector, which writes room readings every five minutes. Override the bind address, port, collector interval, provider, or database path with environment variables when needed.
-
-## Trusted Network Access
-
-The default launcher binds to all network interfaces. To access the dashboard from another device on the same trusted network or VPN, find the host's active LAN address:
-
-```bash
-hostname -I
-```
-
-Then open:
+Auf einem vertrauenswürdigen LAN-Gerät:
 
 ```text
-http://<lan-address>:8501
+http://<server-ip>:8501
 ```
 
-The launcher provides no authentication and no HTTPS. Use it only on a trusted network and never expose it directly to the public internet.
+Der Launcher verwendet standardmäßig `.venv/bin/python`, `0.0.0.0:8501`, die Datenbank `data/heating_data.db`, einen Homematic-Collector alle 900 Sekunden und einen Viessmann-Collector alle 1800 Sekunden.
 
-## Data Collection
+Nur die UI starten:
 
-Collect one complete Homematic state snapshot:
+```bash
+HOMEDASH_PROVIDER=mock .venv/bin/python -m streamlit run app.py --server.headless true
+```
+
+## Konfiguration
+
+Alle Variablen sind optional:
+
+| Variable | Standard | Zweck |
+| --- | --- | --- |
+| `HOMEDASH_PROVIDER` | `homematic` bei vorhandener `config.ini`, sonst `mock` | Datenprovider der UI |
+| `HOMEDASH_DATABASE` | `data/heating_data.db` | SQLite-Datei |
+| `HOMEDASH_BIND` | `0.0.0.0` | Bind-Adresse des Launchers |
+| `HOMEDASH_PORT` | `8501` | HTTP-Port |
+| `HOMEDASH_COLLECTOR_INTERVAL` | `900` | Homematic-Abfrage in Sekunden |
+| `HOMEDASH_VIESSMANN_INTERVAL` | `1800` | Viessmann-Abfrage in Sekunden |
+| `HOMEDASH_ELECTRICITY_PRICE` | `0.30` | Preis in EUR/kWh für Kostenkennzahlen |
+| `HOMEDASH_CONFIG` | `config.ini` | Pfad zur Homematic-Konfiguration |
+| `VIESSMANN_TOKEN_FILE` | keine | Lokaler PyViCare-Token |
+
+Beispiel für einen alternativen Port:
+
+```bash
+HOMEDASH_PORT=8502 sh scripts/run_dashboard.sh
+```
+
+## Daten und Collector
+
+Einmalige Homematic-Abfrage:
 
 ```bash
 python scripts/collect_snapshot.py
 ```
 
-The dashboard launcher collects room readings continuously. By default it runs one collection every five minutes and limits full Homematic snapshots to one every 30 minutes:
+Einmalige Viessmann-Abfrage:
 
 ```bash
-HOMEDASH_COLLECTOR_INTERVAL=300 sh scripts/run_dashboard.sh
+python scripts/collect_viessmann.py
 ```
 
-Room valve positions are read from the `FLOOR_TERMINAL_BLOCK_MECHANIC_CHANNEL` channels of the associated HmIP floor-heating controllers. The values are normalized to percentages and stored in `room_readings`; valve transitions are recorded in `room_events`.
-
-Collect one snapshot manually without starting the dashboard:
-
-```bash
-python scripts/collect_snapshot.py
-```
-
-Inspect available Homematic devices and channels without printing credentials:
+Geräte und Kanäle untersuchen:
 
 ```bash
 python scripts/inspect_homematic.py
 ```
 
-## Database Safety
+Gespeichert werden unter anderem:
 
-The active database is:
+- `room_readings`: normalisierte Raumzeitreihe
+- `homematic_snapshots`: deduplizierte Homematic-Snapshots als JSON
+- `room_events`: beobachtete Ventil- und Raumereignisse
+- `target_changes`: Kompatibilitätstabelle; die App schreibt keine Zieltemperaturen
+- `viessmann_snapshots`: read-only Viessmann-Features als JSON
 
-```text
-data/heating_data.db
-```
+Die Anzeige „Stromverbrauch nicht gemeldet“ bedeutet, dass Viessmann aktuell einen elektrischen Tagesverbrauch von `0 kWh` oder keinen verwertbaren Wert liefert. Das ist nicht automatisch ein Fehler der App; die Rohdaten und deren Aktualität sollten geprüft werden.
 
-`python scripts/init_db.py` creates missing tables and applies small migrations. It does not delete, replace, or reset the existing database.
+## Systemd-Betrieb
 
-Create a consistent SQLite backup before maintenance:
-
-```bash
-python scripts/backup_database.py
-```
-
-Backups are written to `data/backups/`, which is ignored by Git. Use an explicit location when needed:
+Das Template `scripts/homedash.service` ist für einen Benutzer-Service vorbereitet. Vor der Aktivierung müssen `WorkingDirectory`, Datenbankpfad und der Pfad zur geschützten Viessmann-Environment-Datei zur Installation passen.
 
 ```bash
-python scripts/backup_database.py --output /path/to/heating_data-backup.db
+mkdir -p ~/.config/systemd/user
+cp scripts/homedash.service ~/.config/systemd/user/homedash.service
+systemctl --user daemon-reload
+systemctl --user enable --now homedash.service
+systemctl --user status homedash.service
 ```
 
-To use a different database path without changing source code:
+Logs anzeigen:
 
 ```bash
-HOMEDASH_DATABASE=/path/to/heating_data.db streamlit run app.py
+journalctl --user -u homedash.service -f
 ```
 
-## Database Tables
+Der Service ist für ein vertrauenswürdiges Netzwerk gedacht. Es gibt keine integrierte Authentifizierung und kein HTTPS. Nicht direkt ins Internet exponieren.
 
-- `room_readings`: normalized room time series used by the dashboard
-- `homematic_snapshots`: deduplicated device, channel, and group snapshots stored as JSON
-- `room_events`: valve opening/closing and externally observed target-temperature changes
-- `target_changes`: retained for compatibility with earlier versions; the current app does not write target temperatures
-- `viessmann_snapshots`: read-only Viessmann feature inventories stored as JSON
+## Backup, Healthcheck und Tests
 
-## Project Structure
+Konsistentes SQLite-Backup:
+
+```bash
+python scripts/backup_database.py --verify
+```
+
+Betriebsprüfung und HTTP-Smoke-Test:
+
+```bash
+python scripts/healthcheck.py
+python scripts/smoke_test.py
+```
+
+Qualitätsprüfungen:
+
+```bash
+python -m pytest -q
+python -m ruff check app.py src scripts tests
+```
+
+## Troubleshooting
+
+### Browser zeigt keine App
+
+```bash
+ss -lntp | grep 8501
+curl -I http://127.0.0.1:8501
+```
+
+Wenn der Port belegt ist, einen anderen Port verwenden:
+
+```bash
+HOMEDASH_PORT=8502 sh scripts/run_dashboard.sh
+```
+
+### Keine Homematic-Daten
+
+- Prüfen, ob `config.ini` existiert und lokal lesbar ist.
+- Access Point und Netzwerkverbindung prüfen.
+- Eine Einzelabfrage mit `python scripts/collect_snapshot.py` ausführen.
+- Für UI-Tests `HOMEDASH_PROVIDER=mock` verwenden.
+
+### Keine Viessmann-Daten
+
+- `VIESSMANN_USERNAME`, `VIESSMANN_PASSWORD`, `VIESSMANN_CLIENT_ID` und `VIESSMANN_TOKEN_FILE` prüfen.
+- Rechte der Environment-Datei und Token-Datei prüfen.
+- `python scripts/collect_viessmann.py` einmalig ausführen und die Fehlermeldung prüfen.
+- In der App unter `Einstellungen` die read-only Inventory-Abfrage ausführen.
+
+## Projektstruktur
 
 ```text
 HomeDash/
-|-- app.py
-|-- data/
-|   `-- heating_data.db
-|-- src/
-|   |-- config.py
-|   |-- database.py
-|   |-- history.py
-|   |-- hmip_provider.py
-|   |-- mock_provider.py
-|   |-- models.py
-|   `-- room_layout.py
-|-- scripts/
-|   |-- backup_database.py
-|   |-- collect_snapshot.py
-|   |-- init_db.py
-|   |-- inspect_homematic.py
-|   `-- run_dashboard.sh
-|-- requirements.txt
-`-- README.md
+├── app.py
+├── config.ini                 # lokal, geheim, nicht teilen
+├── requirements.txt
+├── data/
+│   ├── heating_data.db        # Laufzeitdaten, lokal
+│   └── vicare_token.json      # optional, lokal
+├── scripts/
+│   ├── backup_database.py
+│   ├── collect_snapshot.py
+│   ├── collect_viessmann.py
+│   ├── healthcheck.py
+│   ├── init_db.py
+│   ├── inspect_homematic.py
+│   ├── run_dashboard.sh
+│   ├── smoke_test.py
+│   └── homedash.service
+├── src/
+│   ├── app_shell.py           # Header und Navigation
+│   ├── database.py             # SQLite-Zugriff und Schema
+│   ├── home_dashboard.py       # Home-Seite
+│   ├── monitoring.py           # Status- und Energiekennzahlen
+│   ├── models.py               # Domänenmodelle
+│   ├── repository.py            # Lesezugriff
+│   ├── viessmann_*.py          # Viessmann-Adapter und Reports
+│   ├── weather*.py             # Wetterprovider und Ansicht
+│   └── ui_theme.py              # Responsive CSS
+└── tests/
 ```
 
-## Roadmap
+## Lizenz und Sicherheit
 
-- More complete room-level assignments
-- Dew-point and temperature/humidity risk analysis
-- Longer-term aggregation and retention policies
-- Viessmann heat-pump integration
+Das Dashboard ist für den lokalen bzw. vertrauenswürdigen Netzwerkbetrieb ausgelegt. Zugangsdaten, Token, `config.ini`, Environment-Dateien und Datenbank-Backups gehören nicht in Git. Vor Wartung oder Migration immer ein Backup erstellen.

@@ -59,7 +59,7 @@ def _room_label(reading: Reading, trends: Optional[dict[str, str]] = None) -> st
     first_line = f"**{escape(compact_name)}**"
     second_line = f"{temperature:.1f} °C{temperature_trend} · {humidity:.0f}%{humidity_trend} · {short_target}"
     third_line = short_valve
-    return f"{first_line}\n{second_line}\n{third_line}"
+    return f"{first_line}  \n{second_line}  \n{third_line}"
 
 
 def _render_room_button(
@@ -91,25 +91,26 @@ def render_overview(
     readings: list[Reading], database_path: Union[str, Path], provider: str
 ) -> None:
     grouped = group_readings_by_level(readings)
-    for level in (UPSTAIRS, BASE_LEVEL, UNASSIGNED):
-        level_readings = grouped.get(level, [])
-        if not level_readings:
-            continue
-        st.markdown(f'<div class="level-heading">{escape(level)}</div>', unsafe_allow_html=True)
-        columns = st.columns(min(4, len(level_readings)))
-        for index, reading in enumerate(level_readings):
-            room_name = str(reading["room_name"])
-            trends = get_room_trends(database_path, room_name)
-            valve_position = float(reading["valve_position"])
-            background = valve_color(valve_position)
-            with columns[index % len(columns)]:
-                _render_room_button(
-                    reading,
-                    key_prefix="overview-room",
-                    label=_room_label(reading, trends),
-                    open_room=_open_room,
-                    background=background,
-                )
+    with st.container(key="room-status-grid"):
+        for level in (UPSTAIRS, BASE_LEVEL, UNASSIGNED):
+            level_readings = grouped.get(level, [])
+            if not level_readings:
+                continue
+            st.markdown(f'<div class="level-heading">{escape(level)}</div>', unsafe_allow_html=True)
+            columns = st.columns(min(4, len(level_readings)))
+            for index, reading in enumerate(level_readings):
+                room_name = str(reading["room_name"])
+                trends = get_room_trends(database_path, room_name)
+                valve_position = float(reading["valve_position"])
+                background = valve_color(valve_position)
+                with columns[index % len(columns)]:
+                    _render_room_button(
+                        reading,
+                        key_prefix="overview-room",
+                        label=_room_label(reading, trends),
+                        open_room=_open_room,
+                        background=background,
+                    )
     st.caption(f"Data provider: {provider}")
 
 

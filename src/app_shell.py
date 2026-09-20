@@ -74,15 +74,5 @@ def render_app_header(app_name: str, database_path: str) -> str:
         st.markdown("### Datenaktualisierung")
         st.write("**Neu laden** rendert nur die Seite neu. Homematic wird automatisch alle 15 Minuten, Viessmann alle 30 Minuten gelesen. Der Zeitstempel im Kopf zeigt den letzten gespeicherten Messwert.")
 
-    timestamps = get_latest_data_timestamps(database_path)
-    st.markdown(
-        "<div style=\"background:#ffffff;border:1px solid #d9e2ec;border-radius:8px;"
-        "color:#486581;font-size:0.85rem;margin:0.25rem 0 1rem;padding:0.5rem 0.75rem;\">"
-        "Letzte Daten: "
-        f"Homematic {escape(format_timestamp(timestamps['homematic']))} | "
-        f"Viessmann {escape(format_timestamp(timestamps['viessmann']))}"
-        "</div>",
-        unsafe_allow_html=True,
-    )
     st.session_state["navigation-last"] = function_choice
     return function_choice

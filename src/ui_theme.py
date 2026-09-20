@@ -10,12 +10,12 @@ APP_THEME = """
     }
 
     [data-testid="stAppViewContainer"] .main .block-container {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
     }
 
     [data-testid="stVerticalBlock"] {
-        gap: 0.1rem;
+        gap: 0.05rem;
     }
 
     [data-testid="stElementContainer"] {
@@ -79,21 +79,30 @@ APP_THEME = """
 
     .home-hero {
         background: linear-gradient(135deg, #102a43 0%, #243b53 58%, #486581 100%);
-        border-radius: 14px;
+        border-radius: 12px;
         color: #ffffff;
-        margin: 0.25rem 0 0.75rem;
-        padding: 1.15rem 1.25rem;
+        margin: 0.15rem 0 0.55rem;
+        padding: 0.85rem 1rem;
     }
 
-    .home-hero__eyebrow { color: #bcccdc; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
-    .home-hero__title { font-size: 1.85rem; font-weight: 800; margin-top: 0.2rem; }
-    .home-hero__meta { color: #d9e2ec; font-size: 0.85rem; margin-top: 0.35rem; }
-    .home-tile-grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0.35rem 0 0.8rem; }
-    .home-tile { background: #ffffff; border: 1px solid #d9e2ec; border-radius: 10px; min-height: 132px; padding: 0.85rem 1rem; }
-    .home-tile__title { color: #102a43; font-size: 1rem; font-weight: 800; }
-    .home-tile__subtitle { color: #627d98; font-size: 0.78rem; margin-top: 0.15rem; }
-    .home-tile__value { color: #102a43; font-size: 1.55rem; font-weight: 800; margin-top: 0.55rem; }
-    .home-tile__detail { color: #486581; font-size: 0.8rem; line-height: 1.55; margin-top: 0.2rem; }
+    .home-hero__eyebrow { color: #bcccdc; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+    .home-hero__title { font-size: 1.45rem; font-weight: 800; margin-top: 0.15rem; }
+    .home-hero__meta { color: #d9e2ec; font-size: 0.8rem; margin-top: 0.2rem; }
+    .home-tile-grid { display: grid; gap: 0.55rem; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0.25rem 0 0.6rem; }
+    .home-tile { background: #ffffff; border: 1px solid #d9e2ec; border-radius: 10px; min-height: 118px; padding: 0.7rem 0.8rem; }
+    .home-tile__title { color: #102a43; font-size: 0.92rem; font-weight: 800; }
+    .home-tile__subtitle { color: #627d98; font-size: 0.72rem; margin-top: 0.1rem; }
+    .home-tile__value { color: #102a43; font-size: 1.3rem; font-weight: 800; margin-top: 0.4rem; }
+    .home-tile__detail { color: #486581; font-size: 0.76rem; line-height: 1.45; margin-top: 0.15rem; }
+
+    .stButton > button {
+        white-space: normal !important;
+        line-height: 1.3 !important;
+        text-align: left !important;
+        padding: 0.65rem 0.7rem !important;
+        word-break: break-word !important;
+        overflow-wrap: anywhere !important;
+    }
 
     .home-tile-grid [data-testid="stButton"] button {
         border-color: #9fb3c8;
@@ -103,9 +112,30 @@ APP_THEME = """
         margin-top: 0.35rem;
     }
 
+    div[data-testid="stAlert"] {
+        border-radius: 10px;
+        padding: 0.55rem 0.75rem !important;
+        margin: 0.25rem 0 0.5rem !important;
+    }
+
+    div[data-testid="stAlert"] p {
+        margin: 0;
+        line-height: 1.35;
+    }
+
     @media (max-width: 700px) {
         .home-tile-grid { grid-template-columns: 1fr; }
-        .home-hero__title { font-size: 1.45rem; }
+        .home-hero__title { font-size: 1.2rem; }
+        .home-tile { min-height: 92px; }
+        .stButton > button {
+            font-size: 0.8rem !important;
+            padding: 0.55rem 0.6rem !important;
+            word-break: break-word !important;
+            overflow-wrap: anywhere !important;
+        }
+        div[data-testid="stAlert"] {
+            padding: 0.45rem 0.6rem !important;
+        }
     }
 
     @media (max-width: 800px) {
@@ -118,9 +148,9 @@ APP_THEME = """
 
     .dashboard-header h1 {
         color: #102a43;
-        font-size: 2.1rem;
+        font-size: 1.8rem;
         letter-spacing: 0;
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.18rem;
     }
 
     [class*="st-key-refresh-button"] button {

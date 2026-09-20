@@ -46,16 +46,20 @@ def _open_room(room_name: str) -> None:
 
 
 def _room_label(reading: Reading, trends: Optional[dict[str, str]] = None) -> str:
-    room_name = escape(str(reading["room_name"]))
+    room_name = str(reading["room_name"])
+    compact_name = room_name if len(room_name) <= 22 else f"{room_name[:19]}…"
     temperature = float(reading["current_temperature"])
     humidity = float(reading["humidity"])
     target = float(reading["target_temperature"])
     valve = float(reading["valve_position"])
     temperature_trend = f" {colored_trend(trends['temperature'])}" if trends else ""
     humidity_trend = f" {colored_trend(trends['humidity'])}" if trends else ""
-    first_line = f"**{room_name}  |  {temperature:.1f} °C{temperature_trend}  |  {humidity:.0f}%{humidity_trend}**"
-    second_line = f"Target {target:.1f} °C  |  Valve {valve_meter(valve)} {valve:.0f}%"
-    return f"{first_line}\n\n{second_line}"
+    short_target = f"Ziel {target:.1f}°"
+    short_valve = f"Ventil {valve_meter(valve)} {valve:.0f}%"
+    first_line = f"**{escape(compact_name)}**"
+    second_line = f"{temperature:.1f} °C{temperature_trend} · {humidity:.0f}%{humidity_trend} · {short_target}"
+    third_line = short_valve
+    return f"{first_line}\n{second_line}\n{third_line}"
 
 
 def _render_room_button(

@@ -14,12 +14,15 @@ This release consolidates the project to a single runtime model:
 - One user-level systemd service for autostart on boot
 - Repository layer for monitoring queries and feature access
 - Shared provider status/result contract for weather and integration health
+- Compact mobile-first dashboard presentation with shorter room labels and tighter UI spacing
 - Automated retry/backoff for scheduled provider collectors
 - Freshness, alarm, energy, heating-effectiveness, and maintenance metrics on Home
 
 The older development/production split was removed to simplify deployment and maintenance.
 
 The app is read-only with respect to heating settings. It reports target temperatures but never writes them back to Homematic IP.
+
+The dashboard presentation is tuned for a compact, scan-friendly overview on desktop and mobile: room tiles use shortened labels, tighter spacing, and cleaner wrapping so status information remains readable without noisy line breaks.
 
 ## Current Features
 

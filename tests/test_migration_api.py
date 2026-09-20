@@ -47,3 +47,40 @@ def test_migration_api_reports_database_readiness(tmp_path, monkeypatch) -> None
     assert response.status_code == 200
     assert response.json()["status"] == "ready"
     assert response.json()["database"] == "read-only"
+
+
+def test_migration_api_serves_home_shell() -> None:
+    from migration.api import app
+
+    response = TestClient(app).get("/")
+
+    assert response.status_code == 200
+    assert "Migration Dashboard" in response.text
+
+
+def test_migration_api_home_summary_is_read_only(tmp_path, monkeypatch) -> None:
+    database_path = tmp_path / "migration.db"
+    initialize_database(database_path)
+    save_readings(
+        database_path,
+        [
+            RoomReading(
+                room_name="Küche",
+                current_temperature=22.0,
+                target_temperature=21.0,
+                humidity=50.0,
+                valve_position=0.0,
+                recorded_at=datetime.now(timezone.utc),
+                level="Erdgeschoss",
+            )
+        ],
+    )
+    monkeypatch.setenv("HOMEDASH_DATABASE", str(database_path))
+
+    from migration.api import app
+
+    response = TestClient(app).get("/api/v1/home")
+
+    assert response.status_code == 200
+    assert response.json()["room_count"] == 1
+    assert response.json()["rooms"][0]["room_name"] == "Küche"

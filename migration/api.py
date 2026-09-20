@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 from datetime import datetime, timedelta, timezone
@@ -8,6 +9,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
+from fastapi.staticfiles import StaticFiles
 
 
 DATABASE_PATH = Path(os.getenv("HOMEDASH_DATABASE", "data/heating_data.db"))
@@ -36,6 +38,16 @@ class HealthResponse(BaseModel):
     database: str
     latest_homematic: str | None = None
     latest_viessmann: str | None = None
+
+
+class HomeResponse(BaseModel):
+    rooms: list[RoomReadingResponse]
+    room_count: int
+    open_valves: int
+    average_temperature: float | None
+    latest_homematic: str | None = None
+    latest_viessmann: str | None = None
+    heat_pump: dict[str, Any] | None = None
 
 
 def _database_path() -> Path:
@@ -78,6 +90,48 @@ def _latest_rooms(connection: sqlite3.Connection) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
+def _feature_value(features: dict[str, Any], feature_name: str, property_name: str) -> Any:
+    for feature in features.get("data", []):
+        if not isinstance(feature, dict) or feature.get("feature") != feature_name:
+            continue
+        property_data = feature.get("properties", {}).get(property_name, {})
+        if isinstance(property_data, dict):
+            value = property_data.get("value")
+            return value.get("value") if isinstance(value, dict) and "value" in value else value
+        return property_data
+    return None
+
+
+def _latest_heat_pump(connection: sqlite3.Connection) -> dict[str, Any] | None:
+    row = connection.execute(
+        """
+        SELECT model, online, features_json
+        FROM viessmann_snapshots
+        WHERE lower(model) LIKE '%vitocal%' OR lower(model) LIKE '%heatpump%'
+        ORDER BY recorded_at DESC
+        LIMIT 1
+        """
+    ).fetchone()
+    if row is None:
+        return None
+    features = json.loads(row["features_json"])
+    return {
+        "model": row["model"],
+        "online": bool(row["online"]),
+        "operating_mode": _feature_value(features, "heating.secondaryCircuit.operation.state", "currentValue"),
+        "compressor_active": _feature_value(features, "heating.compressors.0", "active"),
+        "floor_supply_celsius": _feature_value(features, "heating.circuits.0.sensors.temperature.supply", "value"),
+        "buffer_celsius": _feature_value(features, "heating.bufferCylinder.sensors.temperature.main", "value"),
+        "produced_energy_today_kwh": sum(
+            float(_feature_value(features, feature, "currentDay") or 0)
+            for feature in (
+                "heating.heat.production.summary.heating",
+                "heating.heat.production.summary.dhw",
+            )
+        ),
+    }
+
+
 @app.get("/health/live", response_model=HealthResponse)
 def live_health() -> HealthResponse:
     return HealthResponse(status="ok", database="read-only")
@@ -107,6 +161,32 @@ def rooms() -> list[RoomReadingResponse]:
         raise HTTPException(status_code=503, detail=f"Database unavailable: {error}") from error
 
 
+@app.get("/api/v1/home", response_model=HomeResponse)
+def home() -> HomeResponse:
+    try:
+        with _connect_read_only() as connection:
+            raw_rooms = _latest_rooms(connection)
+            latest_homematic, latest_viessmann = _latest_timestamps(connection)
+            heat_pump = _latest_heat_pump(connection)
+    except (FileNotFoundError, sqlite3.Error) as error:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {error}") from error
+    rooms = [RoomReadingResponse(**room) for room in raw_rooms]
+    return HomeResponse(
+        rooms=rooms,
+        room_count=len(rooms),
+        open_valves=sum(room.valve_position > 0 for room in rooms),
+        average_temperature=(sum(room.current_temperature for room in rooms) / len(rooms)) if rooms else None,
+        latest_homematic=latest_homematic,
+        latest_viessmann=latest_viessmann,
+        heat_pump=heat_pump,
+    )
+
+
+@app.get("/api/v1/weather")
+def weather() -> dict[str, Any]:
+    return {"status": "not_cached", "message": "Weather is not yet persisted by the production collector."}
+
+
 @app.get("/api/v1/rooms/{room_name}/history", response_model=list[dict[str, Any]])
 def room_history(
     room_name: str,
@@ -128,3 +208,6 @@ def room_history(
     except (FileNotFoundError, sqlite3.Error) as error:
         raise HTTPException(status_code=503, detail=f"Database unavailable: {error}") from error
     return [dict(row) for row in rows]
+
+
+app.mount("/", StaticFiles(directory=Path(__file__).with_name("web"), html=True), name="migration-web")

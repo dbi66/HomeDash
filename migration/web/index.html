@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HomeClimate Migration</title>
+  <style>
+    :root { color-scheme: light; --ink:#102a43; --muted:#627d98; --line:#d9e2ec; --paper:#f3f7fb; --card:#fff; --accent:#c2410c; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:ui-sans-serif,system-ui,-apple-system,sans-serif; }
+    main { max-width:1100px; margin:0 auto; padding:20px 16px 40px; }
+    header { align-items:flex-start; display:flex; justify-content:space-between; gap:20px; margin-bottom:20px; }
+    h1,h2,p { margin:0; }
+    h1 { font-size:clamp(1.45rem,4vw,2.25rem); letter-spacing:-.02em; }
+    h2 { font-size:1.15rem; margin-bottom:10px; }
+    .eyebrow { color:var(--muted); font-size:.72rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; margin-bottom:5px; }
+    .meta { color:var(--muted); font-size:.84rem; margin-top:6px; }
+    .status { background:#e6ffed; border:1px solid #b7ebc6; border-radius:999px; color:#176b35; font-size:.75rem; font-weight:800; padding:7px 11px; white-space:nowrap; }
+    .hero { background:linear-gradient(135deg,#102a43,#486581); border-radius:14px; color:#fff; margin-bottom:16px; padding:18px; }
+    .hero .meta { color:#d9e2ec; }
+    .grid { display:grid; gap:10px; grid-template-columns:repeat(4,minmax(0,1fr)); margin-bottom:18px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:10px; min-width:0; padding:13px; }
+    .metric-label { color:var(--muted); font-size:.75rem; font-weight:750; }
+    .metric-value { font-size:1.35rem; font-weight:850; margin-top:5px; }
+    .metric-detail { color:var(--muted); font-size:.7rem; margin-top:3px; }
+    .rooms { display:grid; gap:10px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .room-name { font-size:.98rem; font-weight:800; }
+    .room-values { display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:10px; }
+    .room-value { font-size:.85rem; font-weight:700; }
+    .room-detail { color:var(--muted); font-size:.72rem; margin-top:8px; }
+    .section { margin-top:18px; }
+    .empty { color:var(--muted); }
+    @media (max-width:700px) {
+      main { padding:14px 12px 28px; }
+      header { align-items:flex-start; }
+      .status { font-size:.68rem; }
+      .grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .rooms { grid-template-columns:1fr; }
+      .card { padding:11px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div><div class="eyebrow">HomeClimate · 0.10.0-dev</div><h1>Migration Dashboard</h1><p class="meta">Read-only Vorschau auf den produktiven Datenbestand</p></div>
+      <div class="status">8503 · API</div>
+    </header>
+    <section class="hero"><div class="eyebrow" style="color:#bcccdc">Neue Oberfläche</div><h2 style="font-size:1.35rem;margin:0">Dein Zuhause auf einen Blick</h2><p class="meta" id="freshness">Daten werden geladen ...</p></section>
+    <section class="grid" id="metrics"></section>
+    <section class="section"><h2>Raumstatus</h2><div class="rooms" id="rooms"><p class="empty">Daten werden geladen ...</p></div></section>
+    <section class="section"><h2>Wärmepumpe</h2><div class="card" id="heat-pump"><p class="empty">Daten werden geladen ...</p></div></section>
+  </main>
+  <script>
+    const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[char]));
+    const metric = (label, value, detail) => `<article class="card"><div class="metric-label">${esc(label)}</div><div class="metric-value">${esc(value)}</div><div class="metric-detail">${esc(detail)}</div></article>`;
+    const load = async () => {
+      const response = await fetch('/api/v1/home');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      document.querySelector('#freshness').textContent = `Homematic: ${data.latest_homematic ?? 'nicht verfügbar'} · Viessmann: ${data.latest_viessmann ?? 'nicht verfügbar'}`;
+      document.querySelector('#metrics').innerHTML = [
+        metric('Räume', data.room_count, `${data.open_valves} Ventile geöffnet`),
+        metric('Ø Raumtemperatur', data.average_temperature == null ? 'n/a' : `${data.average_temperature.toFixed(1)} °C`, 'aktueller Bestand'),
+        metric('Datenzugriff', 'read-only', 'keine Provider-Abfragen'),
+        metric('Teststand', '0.10.0-dev', 'Migration auf Port 8503')
+      ].join('');
+      document.querySelector('#rooms').innerHTML = data.rooms.map(room => `<article class="card"><div class="room-name">${esc(room.room_name)}</div><div class="room-values"><span class="room-value">${room.current_temperature.toFixed(1)} °C</span><span class="room-value">Ziel ${room.target_temperature.toFixed(1)} °C</span><span class="room-value">${room.humidity.toFixed(0)} %</span></div><div class="room-detail">Ventil ${room.valve_position.toFixed(0)} % · ${esc(room.level)}</div></article>`).join('');
+      const heatPump = data.heat_pump;
+      document.querySelector('#heat-pump').innerHTML = heatPump ? `<div class="room-name">${esc(heatPump.model)}</div><div class="room-values"><span class="room-value">Vorlauf ${heatPump.floor_supply_celsius ?? 'n/a'} °C</span><span class="room-value">Puffer ${heatPump.buffer_celsius ?? 'n/a'} °C</span><span class="room-value">Erzeugt heute ${heatPump.produced_energy_today_kwh.toFixed(1)} kWh</span></div><div class="room-detail">Modus ${esc(heatPump.operating_mode ?? 'n/a')} · Verdichter ${heatPump.compressor_active ? 'aktiv' : 'bereit'}</div>` : '<p class="empty">Keine Wärmepumpendaten verfügbar.</p>';
+    };
+    load().catch(error => { document.querySelector('#freshness').textContent = `Migration API nicht erreichbar: ${error.message}`; });
+  </script>
+</body>
+</html>

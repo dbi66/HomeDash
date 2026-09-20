@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from html import escape
 from urllib.parse import quote
 
@@ -186,6 +187,18 @@ def render_heat_pump_schema(snapshot: object) -> None:
 def render_clear_heat_pump_schema(snapshot: object) -> None:
     items = {item["name"]: item for group in system_map(snapshot).values() for item in group}
 
+    def feature_time(feature_name: str) -> str:
+        for feature in snapshot.features.get("data", []):
+            if isinstance(feature, dict) and feature.get("feature") == feature_name:
+                raw_timestamp = feature.get("timestamp")
+                if raw_timestamp:
+                    try:
+                        timestamp = datetime.fromisoformat(str(raw_timestamp).replace("Z", "+00:00"))
+                        return timestamp.strftime("%H:%M UTC")
+                    except ValueError:
+                        return str(raw_timestamp)
+        return "Zeitpunkt unbekannt"
+
     def value(name: str) -> str:
         raw_value = str(items.get(name, {}).get("value") or "nicht verfügbar")
         readable_value = raw_value.replace(" celsius", " °C").replace(" percent", " %")
@@ -263,6 +276,7 @@ def render_clear_heat_pump_schema(snapshot: object) -> None:
                 <text x="640" y="285" text-anchor="middle" class="clear-title">PUFFERSPEICHER</text>
                 <path d="M585 345 C680 315 680 375 585 355 C680 335 680 395 585 375" fill="none" stroke="#f7fafc" stroke-width="6" stroke-linecap="round"/>
                 <text x="640" y="410" text-anchor="middle" class="clear-value">{escape(value("Pufferspeicher"))}</text>
+                <text x="640" y="427" text-anchor="middle" class="clear-state">Messwert {escape(feature_time("heating.bufferCylinder.sensors.temperature.main"))}</text>
 
                 <rect x="560" y="40" width="160" height="180" rx="10" class="clear-buffer"/>
                 <path d="M585 135 C680 105 680 165 585 145 C680 125 680 185 585 165" fill="none" stroke="#f7fafc" stroke-width="6" stroke-linecap="round"/>
@@ -284,6 +298,7 @@ def render_clear_heat_pump_schema(snapshot: object) -> None:
                 <path d="M900 425 H1080" class="clear-floor clear-floor-cold"/>
                 <text x="990" y="270" text-anchor="middle" class="clear-title" style="font-size:12px">FUSSBODENHEIZUNG</text>
                 <text x="990" y="288" text-anchor="middle" class="clear-value">Vorlauf {escape(value("Heizkreis 1 Vorlauf"))}</text>
+                <text x="990" y="305" text-anchor="middle" class="clear-state">Messwert {escape(feature_time("heating.circuits.0.sensors.temperature.supply"))}</text>
                 <text x="1100" y="450" text-anchor="middle" class="clear-label">HEIZKREIS-RÜCKLAUF</text>
                 <text x="1100" y="470" text-anchor="middle" class="clear-state">kein separater Viessmann-Sensor</text>
             </svg>

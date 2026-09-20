@@ -1,4 +1,6 @@
-# HomeClimate Dashboard
+# HomeClimate Dashboard 0.9a
+
+**Prerelease:** Die `0.9a`-Version bündelt die aktuelle modulare Dashboard-Architektur, die mobile UI-Überarbeitung und die erste betriebliche Zugriffsmöglichkeit über Tailscale.
 
 Lokales Streamlit-Dashboard zur Beobachtung einer Homematic-IP-Heizung und optional einer Viessmann-Wärmepumpe. Die Anwendung liest Daten, speichert sie lokal in SQLite und verändert keine Heizungs- oder Geräteeinstellungen.
 
@@ -13,6 +15,9 @@ Lokales Streamlit-Dashboard zur Beobachtung einer Homematic-IP-Heizung und optio
 - Mock-Modus für Entwicklung ohne Homematic-Hardware
 - Responsive Darstellung für Desktop und mobile Browser
 - Lokale SQLite-Historie und verifizierbare Backups
+- Kompakte mobile Kennzahlen und Raumkarten ohne horizontales Überlaufen
+- Gemeinsame Messreihen-Auswahl in „Alle Diagramme“ statt wiederholter Diagrammsteuerungen
+- Zeitstempel direkt an Viessmann-Sensorwerten, wenn Messwerte nicht synchron aktualisiert wurden
 
 ## Architektur
 
@@ -173,6 +178,24 @@ Gespeichert werden unter anderem:
 
 Die Anzeige „Stromverbrauch nicht gemeldet“ bedeutet, dass Viessmann aktuell einen elektrischen Tagesverbrauch von `0 kWh` oder keinen verwertbaren Wert liefert. Das ist nicht automatisch ein Fehler der App; die Rohdaten und deren Aktualität sollten geprüft werden.
 
+## Externer Zugriff über Tailscale
+
+Für den Zugriff von unterwegs wird Tailscale empfohlen. Die App bleibt dabei im privaten Tailnet und wird nicht per Router-Portfreigabe öffentlich gemacht.
+
+Auf dem Server:
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+sudo tailscale set --operator="$USER"
+tailscale serve --bg http://127.0.0.1:8501
+tailscale serve status
+```
+
+Die ausgegebene `https://...ts.net`-Adresse kann im mobilen Browser verwendet werden. Auf dem iPhone muss die Tailscale-App installiert, aktiviert und mit demselben Tailnet-Konto angemeldet sein. Die konkrete Adresse ist installationsabhängig und gehört nicht fest in die Projektdokumentation.
+
+Der aktuelle Tailscale-Zugriff ist auf das Dashboard begrenzt. Eine spätere Verschärfung kann HomeDash zusätzlich ausschließlich an `127.0.0.1` binden; der Tailscale-Serve-Proxy bleibt dann der einzige externe Einstiegspunkt.
+
 ## Systemd-Betrieb
 
 Das Template `scripts/homedash.service` ist für einen Benutzer-Service vorbereitet. Vor der Aktivierung müssen `WorkingDirectory`, Datenbankpfad und der Pfad zur geschützten Viessmann-Environment-Datei zur Installation passen.
@@ -280,3 +303,9 @@ HomeDash/
 ## Lizenz und Sicherheit
 
 Das Dashboard ist für den lokalen bzw. vertrauenswürdigen Netzwerkbetrieb ausgelegt. Zugangsdaten, Token, `config.ini`, Environment-Dateien und Datenbank-Backups gehören nicht in Git. Vor Wartung oder Migration immer ein Backup erstellen.
+
+## 0.9a bekannte Einschränkungen
+
+- Viessmann kann elektrische Tagesverbrauchswerte mit `0 kWh` oder veralteten Quellzeitstempeln liefern, obwohl Wärmeerzeugung vorhanden ist. Die App zeigt diesen Zustand ausdrücklich an und erfindet keinen Verbrauchswert.
+- Viessmann-Sensoren werden innerhalb eines Snapshots nicht immer gleichzeitig aktualisiert. Wärmepumpenschemata zeigen deshalb die jeweiligen Sensorzeitpunkte neben den Messwerten.
+- SQLite-Schema-Versionierung, Aufbewahrungsregeln und ein dokumentierter Upgrade-/Rollback-Prozess sind nach dem Prerelease weiterhin offene Betriebsaufgaben.

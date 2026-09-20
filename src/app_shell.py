@@ -10,7 +10,7 @@ from src.navigation import PAGES
 
 
 def render_app_header(app_name: str, database_path: str) -> str:
-    header_actions = st.columns([6, 2, 3])
+    header_actions = st.columns([8, 3])
     with header_actions[0]:
         st.markdown(
             f'<div class="dashboard-header"><h1>{escape(app_name)}</h1></div>',
@@ -23,14 +23,6 @@ def render_app_header(app_name: str, database_path: str) -> str:
             f"Viessmann {format_timestamp(timestamps['viessmann'])} ({format_data_age(timestamps['viessmann'])})"
         )
     with header_actions[1]:
-        if st.button(
-            "Neu laden",
-            key="refresh-button",
-            help="Seite neu darstellen; Datenabfragen laufen automatisch im festen Raster.",
-            width="stretch",
-        ):
-            st.rerun()
-    with header_actions[2]:
         route_hint = {
             "detail": "Raumdetail",
             "report": "Raumbericht",
@@ -58,21 +50,6 @@ def render_app_header(app_name: str, database_path: str) -> str:
             key="function-navigation",
             label_visibility="collapsed",
         )
-
-    help_text = {
-        "Home": "Zeigt Raumkacheln nach Etage. Temperatur, Luftfeuchte, Zieltemperatur und Ventilstellung stammen aus dem letzten Homematic-Snapshot.",
-        "Raumdetail": "Zeigt den gewählten Raum mit Historie, Verläufen und Ereignissen. Die Ansicht verändert keine Heizungswerte.",
-        "Raumbericht": "Vergleicht alle Räume über Temperatur- und Feuchtigkeitsdiagramme und zeigt den Ventilstatus als Tabelle.",
-        "Alle Diagramme": "Zeigt die Raumverläufe kompakt für 24 Stunden, 7 Tage oder 30 Tage.",
-        "Wärmepumpe": "Zeigt Viessmann-Schemata, KPIs, Heizkurve, Betriebszustände, Temperaturen, Energie- und Snapshot-Historie.",
-        "Wetter": "Zeigt die 7-Tage-Vorhersage für Aystetten (86482) mit Wetterlage, Temperatur, Niederschlag und Wind.",
-        "Einstellungen": "Erlaubt das read-only Einlesen von Homematic- und Viessmann-Daten. Heizungsparameter werden nicht geschrieben.",
-    }.get(function_choice, "Diese Seite zeigt gespeicherte Monitoringdaten.")
-    with st.popover("Hilfe"):
-        st.markdown("### Diese Seite")
-        st.write(help_text)
-        st.markdown("### Datenaktualisierung")
-        st.write("**Neu laden** rendert nur die Seite neu. Homematic wird automatisch alle 15 Minuten, Viessmann alle 30 Minuten gelesen. Der Zeitstempel im Kopf zeigt den letzten gespeicherten Messwert.")
 
     st.session_state["navigation-last"] = function_choice
     return function_choice

@@ -211,20 +211,6 @@ APP_THEME = """
         margin-bottom: 0.18rem;
     }
 
-    [class*="st-key-refresh-button"] button {
-        background: #ffffff;
-        border: 1px solid #bcccdc;
-        border-radius: 8px;
-        color: #102a43;
-        min-height: 42px !important;
-        padding: 0.45rem 0.8rem !important;
-    }
-
-    [class*="st-key-refresh-button"] button p {
-        font-size: 0.8rem;
-        font-weight: 700;
-    }
-
     .dashboard-header p {
         color: #627d98;
         margin: 0;

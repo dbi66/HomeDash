@@ -29,6 +29,7 @@ Open-Meteo API ---------------------------------------> Wetterseite
 ```
 
 - `app.py` ist der dünne Einstiegspunkt und Router.
+- `migration/` enthält die read-only FastAPI-Migrations-API (`0.10.0-dev`).
 - `src/` enthält Provider, Datenmodelle, Repository-Zugriff, Berechnungen und Views.
 - `scripts/collect_snapshot.py` speichert Homematic-Raumwerte und Snapshots.
 - `scripts/collect_viessmann.py` speichert Viessmann-Wärmepumpen-Snapshots.
@@ -156,6 +157,14 @@ HOMEDASH_PORT=8503 HOMEDASH_RUN_COLLECTORS=0 sh scripts/run_dashboard.sh
 ```
 
 Der produktive Dienst auf `8501` bleibt dabei unverändert aktiv und ist der einzige Prozess, der Provider abfragt und die operative Datenbank aktualisiert. Niemals beide Ports mit aktivierten Collectors starten.
+
+Der erste Migrations-API-Slice läuft auf `8503`:
+
+```bash
+.venv/bin/uvicorn migration.api:app --host 0.0.0.0 --port 8503
+```
+
+Verfügbare Endpunkte sind `/health/live`, `/health/ready`, `/api/v1/rooms` und `/api/v1/rooms/{room_name}/history`. Die API öffnet SQLite ausschließlich read-only.
 
 ## Daten und Collector
 
@@ -300,6 +309,9 @@ HomeDash/
 │   ├── run_dashboard.sh
 │   ├── smoke_test.py
 │   └── homedash.service
+├── migration/
+│   ├── __init__.py
+│   └── api.py                  # read-only FastAPI-Migrationsslice
 ├── src/
 │   ├── app_shell.py           # Header und Navigation
 │   ├── database.py             # SQLite-Zugriff und Schema

@@ -79,6 +79,7 @@ Status: abgeschlossen.
 
 ### Phase 1: Verträge und Datenmodell
 
+- Status: begonnen mit dem read-only FastAPI-Slice in `migration/api.py`.
 - Domänenmodelle für Raum, Sensor, Snapshot, Providerstatus und Messwert definieren
 - `recorded_at` und `source_timestamp` getrennt speichern
 - `quality` und `is_stale` für jeden externen Messwert vorsehen
@@ -100,11 +101,14 @@ Ergebnis: zuverlässige Datenversorgung ohne Streamlit-Abhängigkeit.
 
 ### Phase 3: FastAPI-Backend
 
+- Status: erster read-only Slice aktiv auf Port `8503`.
 - Read-only API für Home-Zusammenfassung, Räume, Historien, Wärmepumpe und Wetter
 - `/health/live` für Prozessgesundheit
 - `/health/ready` für Datenbank und Collector-Frische
 - Pydantic-Schemas als öffentliche API-Verträge
 - zunächst nur lokale Bind-Adresse `127.0.0.1`
+
+Der aktuelle Prototyp stellt `/health/live`, `/health/ready`, `/api/v1/rooms` und `/api/v1/rooms/{room_name}/history` bereit. Er verwendet dieselbe operative SQLite-Datei nur lesend; Provider und Collector bleiben ausschließlich auf `8501`.
 
 Ergebnis: alle Dashboard-Daten sind ohne Streamlit abrufbar.
 

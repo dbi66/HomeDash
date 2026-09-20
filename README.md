@@ -13,6 +13,7 @@ This release consolidates the project to a single runtime model:
 - One Viessmann collector process that records heat-pump snapshots every 30 minutes
 - One user-level systemd service for autostart on boot
 - Repository layer for monitoring queries and feature access
+- Shared provider status/result contract for weather and integration health
 - Automated retry/backoff for scheduled provider collectors
 - Freshness, alarm, energy, heating-effectiveness, and maintenance metrics on Home
 
@@ -122,13 +123,16 @@ The original ten-step roadmap has been implemented through v0.9. Remaining impro
 7. **Completed: Introduce typed domain and provider models**
   Replace untyped `dict[str, object]` payloads and scattered feature-name strings with typed room, weather, heat-pump, KPI, and sensor-mapping models. Keep provider-specific raw JSON behind adapters.
 
-8. **In progress: Complete repository and migration layer for SQLite**
+8. **Completed: Standardize provider contracts and degraded health semantics**
+  Shared `ProviderStatus` and `ProviderResult` handling is in place for weather and integration calls. Downstream code can distinguish `ok`, `degraded`, `error`, and `missing` states consistently.
+
+9. **In progress: Complete repository and migration layer for SQLite**
   The monitoring repository is implemented. Schema versioning, migrations, retention policies, and broader SQL/domain separation remain.
 
-9. **Completed: Expand automated quality and integration tests**
+10. **Completed: Expand automated quality and integration tests**
   Provider contracts, retry behavior, sensor mapping, KPI edge cases, stale-data checks, weather contracts, HTTP smoke checks, and desktop/mobile browser checks are covered.
 
-10. **In progress: Harden deployment and observability**
+11. **In progress: Harden deployment and observability**
   Healthchecks and backup verification are implemented. Structured rotating logs, graceful collector shutdown, and a documented upgrade/rollback procedure remain. The tracked systemd template uses an external protected EnvironmentFile for secrets.
 
 ## Requirements

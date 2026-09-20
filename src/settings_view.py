@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from html import escape
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,41 @@ HeatPumpLoader = Callable[[Any], list[Any]]
 SnapshotSaver = Callable[[str | Path, list[dict[str, object]]], int]
 InventoryRenderer = Callable[[list[dict[str, object]]], None]
 HierarchyRenderer = Callable[[object], None]
+
+
+def render_device_hierarchy(home: object) -> None:
+    devices = sorted(
+        getattr(home, "devices", []),
+        key=lambda device: str(getattr(device, "label", "")).lower(),
+    )
+    nodes = []
+    for device in devices:
+        label = str(getattr(device, "label", "Unnamed device"))
+        model = str(getattr(device, "modelType", "Unknown model"))
+        channels = sorted(
+            getattr(device, "functionalChannels", []),
+            key=lambda item: int(getattr(item, "index", 0)),
+        )
+        chips = []
+        for channel in channels:
+            channel_type = escape(str(getattr(channel, "functionalChannelType", "Unknown channel")))
+            channel_label = escape(str(getattr(channel, "label", "")))
+            channel_index = escape(str(getattr(channel, "index", "?")))
+            title = f"{channel_index}: {channel_type}"
+            if channel_label:
+                title = f"{title} | {channel_label}"
+            chips.append(f'<span class="channel-chip">{title}</span>')
+        channel_html = "".join(chips) or '<span class="channel-chip">No channels</span>'
+        nodes.append(
+            f'<div class="device-node"><div class="device-node__title">{escape(label)}'
+            f'<span class="device-node__model">{escape(model)}</span></div>{channel_html}</div>'
+        )
+    tree = (
+        f'<div class="device-tree"><div class="device-tree__root">HomeClimate'
+        f'<span class="device-tree__model">{len(devices)} devices</span></div>'
+        f'<div class="device-tree__branch">{"".join(nodes)}</div></div>'
+    )
+    st.markdown(tree, unsafe_allow_html=True)
 
 
 @st.dialog("Einstellungen")

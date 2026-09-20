@@ -211,27 +211,9 @@ def get_room_events(database_path: Union[str, Path], room_name: str, limit: int 
 
 
 def get_latest_readings(database_path: Union[str, Path]) -> list[dict[str, object]]:
-    initialize_database(database_path)
-    with sqlite3.connect(database_path) as connection:
-        connection.row_factory = sqlite3.Row
-        rows = connection.execute(
-            """
-            SELECT room_name, current_temperature, target_temperature,
-                   humidity, valve_position, recorded_at, level
-            FROM (
-                SELECT room_name, current_temperature, target_temperature,
-                       humidity, valve_position, recorded_at, level,
-                       ROW_NUMBER() OVER (
-                           PARTITION BY room_name
-                           ORDER BY recorded_at DESC, id DESC
-                       ) AS row_number
-                FROM room_readings
-            ) AS latest
-            WHERE row_number = 1
-            ORDER BY room_name
-            """
-        ).fetchall()
-    return [dict(row) for row in rows]
+    from src.repository import MonitoringRepository
+
+    return MonitoringRepository(database_path).latest_room_readings()
 
 
 def get_room_trends(
@@ -297,24 +279,9 @@ def get_room_history(
     room_name: str,
     hours: int,
 ) -> list[dict[str, object]]:
-    if hours <= 0:
-        raise ValueError("hours must be greater than zero")
+    from src.repository import MonitoringRepository
 
-    initialize_database(database_path)
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
-    with sqlite3.connect(database_path) as connection:
-        connection.row_factory = sqlite3.Row
-        rows = connection.execute(
-            """
-            SELECT recorded_at, current_temperature, target_temperature,
-                   humidity, valve_position
-            FROM room_readings
-            WHERE room_name = ? AND recorded_at >= ?
-            ORDER BY recorded_at
-            """,
-            (room_name, cutoff.isoformat()),
-        ).fetchall()
-    return [dict(row) for row in rows]
+    return MonitoringRepository(database_path).room_history(room_name, hours)
 
 
 def record_target_change(

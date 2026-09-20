@@ -1,19 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
 from typing import Any
 
 from src.viessmann_provider import ViessmannProviderError, load_client
 from src.feature_access import FeatureAccessor
-
-
-@dataclass(frozen=True)
-class HeatPumpSnapshot:
-    device_id: str
-    model: str
-    online: bool
-    features: dict[str, Any]
+from src.models import FeatureValue, HeatPumpSnapshot
 
 
 def _is_heat_pump(device: Any) -> bool:
@@ -85,21 +77,16 @@ def feature_values(snapshot: HeatPumpSnapshot) -> list[dict[str, str]]:
         if not isinstance(properties, dict):
             continue
         for property_name, property_data in properties.items():
-            value = property_data.get("value") if isinstance(property_data, dict) else property_data
-            unit = property_data.get("unit", "") if isinstance(property_data, dict) else ""
-            if isinstance(value, dict) and "value" in value:
-                unit = value.get("unit", unit)
-                value = value["value"]
-            if isinstance(value, (dict, list)):
-                value_text = str(value)
-            else:
-                value_text = "" if value is None else str(value)
+            value_row = FeatureValue.from_raw(feature, str(property_name))
+            value_text = "" if value_row.value is None else str(value_row.value)
+            if isinstance(value_row.value, (dict, list)):
+                value_text = str(value_row.value)
             rows.append(
                 {
                     "feature": feature_name,
                     "property": str(property_name),
                     "value": value_text,
-                    "unit": str(unit),
+                    "unit": str(value_row.unit),
                 }
             )
     return rows

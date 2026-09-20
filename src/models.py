@@ -2,10 +2,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from typing import Any, TypeAlias
 
 
 RoomValue: TypeAlias = str | float | int | bool | None
+
+
+class DataQuality(str, Enum):
+    GOOD = "good"
+    DEGRADED = "degraded"
+    ERROR = "error"
+    MISSING = "missing"
 
 
 @dataclass(frozen=True)
@@ -17,6 +25,26 @@ class RoomReading:
     valve_position: float
     recorded_at: datetime
     level: str = "Unassigned"
+
+
+@dataclass(frozen=True)
+class SensorReading:
+    sensor_id: str
+    value: RoomValue
+    unit: str
+    recorded_at: datetime
+    source_timestamp: datetime | None = None
+    quality: DataQuality = DataQuality.GOOD
+    is_stale: bool = False
+
+
+@dataclass(frozen=True)
+class SnapshotContract:
+    provider: str
+    recorded_at: datetime
+    source_timestamp: datetime | None = None
+    quality: DataQuality = DataQuality.GOOD
+    is_stale: bool = False
 
 
 @dataclass(frozen=True)

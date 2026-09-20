@@ -100,10 +100,10 @@ Stand: 2026-09-20. Der Wiederanlauf auf `proxubuntu01` ist technisch sauber:
 Nächste Reihenfolge:
 
 1. Erledigt: `8503` ohne Collector und der Browser-Smoke-Test für 320px, 390px, 768px und Desktop sind geprüft; Raumdetail, Historie und Wärmepumpenansicht funktionieren ohne horizontalen Überlauf.
-2. Als nächstes die Read-only-Ausgaben von `8503` gegen die Streamlit-Referenz auf `8501` vergleichen und zusätzliche Provider-Aufrufe ausschließen.
-3. Danach die Datenverträge für Raum, Sensor, Snapshot, Providerstatus, `source_timestamp`, `quality` und `is_stale` als Contract-Tests festschreiben.
-4. Anschließend Homematic- und Viessmann-Collector als getrennte, beobachtbare Jobs mit Retry, Timeout, Backoff und `collection_runs` stabilisieren.
-5. Erst danach SQLite-WAL, Alembic, Retention und Restore auf einer Datenbankkopie einführen; der produktive Datenpfad bleibt bis zur Abnahme unverändert.
+2. Erledigt: Read-only-Ausgaben von `8503` und dem produktiven Repository-Pfad auf `8501` verglichen; 14 Räume und die Wärmepumpe stimmen überein.
+3. Erledigt: Datenverträge für Sensor/Snapshot mit `source_timestamp`, `quality` und `is_stale` sowie Contract-Tests ergänzt.
+4. Erledigt: Homematic- und Viessmann-Collector mit Retry, 30-Sekunden-Provider-Timeout, Backoff und `collection_runs` stabilisiert; die produktiven Prozesse benötigen für die Aktivierung einen kontrollierten Neustart.
+5. Als nächstes SQLite-WAL, Alembic, Retention und Restore auf einer Datenbankkopie einführen; der produktive Datenpfad bleibt bis zur Abnahme unverändert.
 
 ### Phase 2: Collector und Persistenz
 

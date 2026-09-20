@@ -139,6 +139,7 @@ Alle Variablen sind optional:
 | `HOMEDASH_PORT` | `8501` | HTTP-Port |
 | `HOMEDASH_COLLECTOR_INTERVAL` | `900` | Homematic-Abfrage in Sekunden |
 | `HOMEDASH_VIESSMANN_INTERVAL` | `1800` | Viessmann-Abfrage in Sekunden |
+| `HOMEDASH_PROVIDER_TIMEOUT_SECONDS` | `30` | Maximale Dauer eines Provideraufrufs vor Retry |
 | `HOMEDASH_RUN_COLLECTORS` | `1` | Collector-Prozesse aktivieren; für reine Test-UI auf `0` setzen |
 | `HOMEDASH_ELECTRICITY_PRICE` | `0.30` | Preis in EUR/kWh für Kostenkennzahlen |
 | `HOMEDASH_CONFIG` | `config.ini` | Pfad zur Homematic-Konfiguration |

@@ -9,15 +9,15 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import DATABASE_PATH, HOMEDASH_COLLECTOR_INTERVAL
-from src.database import save_readings
+from src.config import DATABASE_PATH, HOMEDASH_COLLECTOR_INTERVAL, HOMEDASH_PROVIDER_TIMEOUT_SECONDS
+from src.database import finish_collection_run, save_readings, start_collection_run
 from src.history import save_home_snapshot
 from src.hmip_provider import HomematicProviderError, load_home, map_room_readings
 from src.retry import retry_call
 
 
 def collect_once(snapshot_interval_minutes: int) -> tuple[int, int]:
-    home = retry_call(load_home)
+    home = retry_call(load_home, timeout_seconds=HOMEDASH_PROVIDER_TIMEOUT_SECONDS)
     recorded_at = datetime.now(timezone.utc)
     room_readings = map_room_readings(home)
     if not room_readings:
@@ -53,14 +53,43 @@ def main() -> int:
 
     next_run = time.monotonic()
     while True:
+        started = datetime.now(timezone.utc)
+        run_id = start_collection_run(DATABASE_PATH, "homematic", started.isoformat())
         try:
             room_count, snapshot_count = collect_once(arguments.snapshot_interval)
+            finished = datetime.now(timezone.utc)
+            finish_collection_run(
+                DATABASE_PATH,
+                run_id,
+                finished_at=finished.isoformat(),
+                status="success",
+                record_count=room_count,
+                duration_ms=int((finished - started).total_seconds() * 1000),
+            )
             print(f"Collected {room_count} rooms and {snapshot_count} Homematic objects.")
         except HomematicProviderError as error:
+            finished = datetime.now(timezone.utc)
+            finish_collection_run(
+                DATABASE_PATH,
+                run_id,
+                finished_at=finished.isoformat(),
+                status="error",
+                duration_ms=int((finished - started).total_seconds() * 1000),
+                error=str(error),
+            )
             print(f"Collection failed: {error}")
             if arguments.interval <= 0:
                 return 1
         except Exception as error:
+            finished = datetime.now(timezone.utc)
+            finish_collection_run(
+                DATABASE_PATH,
+                run_id,
+                finished_at=finished.isoformat(),
+                status="error",
+                duration_ms=int((finished - started).total_seconds() * 1000),
+                error=f"{type(error).__name__}: {error}",
+            )
             print(f"Collection failed: {type(error).__name__}: {error}")
             if arguments.interval <= 0:
                 return 1

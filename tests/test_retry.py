@@ -33,3 +33,12 @@ def test_retry_call_raises_after_last_attempt() -> None:
         raise AssertionError("retry_call did not raise")
 
     assert len(calls) == 2
+
+
+def test_retry_call_rejects_non_positive_timeout() -> None:
+    try:
+        retry_call(lambda: "ok", timeout_seconds=0)
+    except ValueError as error:
+        assert str(error) == "timeout_seconds must be greater than zero"
+    else:
+        raise AssertionError("retry_call accepted a non-positive timeout")

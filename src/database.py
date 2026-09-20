@@ -121,6 +121,18 @@ CREATE TABLE IF NOT EXISTS viessmann_snapshots (
 );
 CREATE INDEX IF NOT EXISTS idx_viessmann_snapshots_time
     ON viessmann_snapshots (recorded_at DESC);
+CREATE TABLE IF NOT EXISTS collection_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider TEXT NOT NULL,
+    started_at TEXT NOT NULL,
+    finished_at TEXT,
+    status TEXT NOT NULL,
+    record_count INTEGER NOT NULL DEFAULT 0,
+    duration_ms INTEGER,
+    error TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_collection_runs_provider_time
+    ON collection_runs (provider, started_at DESC);
 """
 
 
@@ -146,6 +158,37 @@ def initialize_database(database_path: Union[str, Path]) -> None:
                 (level, room_name),
             )
     initialize_history(path)
+
+
+def start_collection_run(database_path: Union[str, Path], provider: str, started_at: str) -> int:
+    initialize_database(database_path)
+    with sqlite3.connect(database_path) as connection:
+        cursor = connection.execute(
+            "INSERT INTO collection_runs (provider, started_at, status) VALUES (?, ?, ?)",
+            (provider, started_at, "running"),
+        )
+        return int(cursor.lastrowid)
+
+
+def finish_collection_run(
+    database_path: Union[str, Path],
+    run_id: int,
+    *,
+    finished_at: str,
+    status: str,
+    record_count: int = 0,
+    duration_ms: int | None = None,
+    error: str | None = None,
+) -> None:
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            UPDATE collection_runs
+            SET finished_at = ?, status = ?, record_count = ?, duration_ms = ?, error = ?
+            WHERE id = ?
+            """,
+            (finished_at, status, record_count, duration_ms, error, run_id),
+        )
 
 
 def save_readings(database_path: Union[str, Path], readings: list[RoomReading]) -> None:

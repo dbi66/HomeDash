@@ -1,8 +1,8 @@
-# HomeClimate Dashboard 0.9a
+# HomeClimate Dashboard 0.10.0
 
-**Prerelease:** Die `0.9a`-Version bündelt die aktuelle modulare Dashboard-Architektur, die mobile UI-Überarbeitung und die erste betriebliche Zugriffsmöglichkeit über Tailscale.
+Die `0.10.0`-Version ist der produktive Migrationsstand mit FastAPI-Backend, statischer Dashboard-Oberfläche, mobilen Diagrammen und getrennten Collectors.
 
-Lokales Streamlit-Dashboard zur Beobachtung einer Homematic-IP-Heizung und optional einer Viessmann-Wärmepumpe. Die Anwendung liest Daten, speichert sie lokal in SQLite und verändert keine Heizungs- oder Geräteeinstellungen.
+HomeDash beobachtet eine Homematic-IP-Heizung und eine Viessmann-Wärmepumpe. Die produktive API und UI lesen SQLite; nur die beiden Collector schreiben neue Messwerte. Heizungs- oder Geräteeinstellungen werden nicht verändert.
 
 ## Funktionen
 
@@ -23,17 +23,18 @@ Lokales Streamlit-Dashboard zur Beobachtung einer Homematic-IP-Heizung und optio
 
 ```text
 Homematic IP  -┐
-               +-> Collector -> data/heating_data.db -> Streamlit-App
-Viessmann API -┘                                      +-> HomeDash UI
+               +-> Collector -> data/heating_data.db -> FastAPI + HomeDash UI
+Viessmann API -┘                                      +-> Tailscale Serve
 Open-Meteo API ---------------------------------------> Wetterseite
 ```
 
-- `app.py` ist der dünne Einstiegspunkt und Router.
+- `app.py` enthält den archivierten Streamlit-Fallback.
 - `migration/` enthält die read-only FastAPI-Migrations-API (`0.10.0-dev`).
 - `src/` enthält Provider, Datenmodelle, Repository-Zugriff, Berechnungen und Views.
 - `scripts/collect_snapshot.py` speichert Homematic-Raumwerte und Snapshots.
 - `scripts/collect_viessmann.py` speichert Viessmann-Wärmepumpen-Snapshots.
-- `scripts/run_dashboard.sh` startet beide Collector und Streamlit in einem Prozessverbund.
+- `scripts/run_migration_prod.sh` startet die produktive FastAPI-UI und genau einen Collector-Satz.
+- `scripts/run_dashboard.sh` bleibt als Streamlit-Fallback erhalten.
 - `data/heating_data.db` ist die Standarddatenbank und wird nicht ins Repository eingecheckt.
 
 ## Neuaufbau aus einem frischen Checkout
@@ -101,10 +102,10 @@ Die Viessmann-Integration ist read-only. Sie liest die verfügbaren Features und
 
 ### 5. App starten
 
-Für den vollständigen Betrieb mit beiden Collectors:
+Für den produktiven Betrieb:
 
 ```bash
-sh scripts/run_dashboard.sh
+systemctl --user restart homedash.service
 ```
 
 Danach öffnen:
@@ -119,7 +120,7 @@ Auf einem vertrauenswürdigen LAN-Gerät:
 http://<server-ip>:8501
 ```
 
-Der Launcher verwendet standardmäßig `.venv/bin/python`, `0.0.0.0:8501`, die Datenbank `data/heating_data.db`, einen Homematic-Collector alle 900 Sekunden und einen Viessmann-Collector alle 1800 Sekunden.
+Der produktive User-Service verwendet `.venv/bin/python`, bindet `0.0.0.0:8501`, liest `data/heating_data.db` und startet genau einen Homematic-Collector alle 900 Sekunden sowie einen Viessmann-Collector alle 1800 Sekunden. Ein `flock` verhindert einen zweiten Collector-Satz.
 
 Nur die UI starten:
 
@@ -151,13 +152,13 @@ Beispiel für einen alternativen Port:
 HOMEDASH_PORT=8502 sh scripts/run_dashboard.sh
 ```
 
-Für die Migration ist `8503` als Testport reserviert. Bis der neue Stack eigene Collector besitzt, bleibt ausschließlich der produktive Dienst auf `8501` datenaktiv. Eine reine Test-UI darf keine Homematic- oder Viessmann-Abfragen starten:
+`8503` ist der read-only Migrationstestport. Dort laufen keine Collector und keine Provider-Abfragen:
 
 ```bash
 HOMEDASH_PORT=8503 HOMEDASH_RUN_COLLECTORS=0 sh scripts/run_dashboard.sh
 ```
 
-Der produktive Dienst auf `8501` bleibt dabei unverändert aktiv und ist der einzige Prozess, der Provider abfragt und die operative Datenbank aktualisiert. Niemals beide Ports mit aktivierten Collectors starten.
+Der produktive Dienst auf `8501` ist der einzige Prozess, der Provider abfragt und die operative Datenbank aktualisiert. Niemals `8503` mit Collectors starten.
 
 Der erste Migrations-API-Slice läuft auf `8503`:
 
@@ -165,7 +166,7 @@ Der erste Migrations-API-Slice läuft auf `8503`:
 .venv/bin/uvicorn migration.api:app --host 0.0.0.0 --port 8503
 ```
 
-Verfügbare Endpunkte sind `/health/live`, `/health/ready`, `/api/v1/rooms` und `/api/v1/rooms/{room_name}/history`. Die API öffnet SQLite ausschließlich read-only.
+Verfügbare Endpunkte sind `/health/live`, `/health/ready`, `/api/v1/home`, `/api/v1/status`, `/api/v1/rooms`, Raumhistorien, `/api/v1/heat-pump`, `/api/v1/heat-pump/report` und `/api/v1/weather`. Die API öffnet SQLite ausschließlich read-only.
 
 ## Daten und Collector
 
@@ -195,7 +196,7 @@ Gespeichert werden unter anderem:
 - `target_changes`: Kompatibilitätstabelle; die App schreibt keine Zieltemperaturen
 - `viessmann_snapshots`: read-only Viessmann-Features als JSON
 
-Die Anzeige „Stromverbrauch nicht gemeldet“ bedeutet, dass Viessmann aktuell einen elektrischen Tagesverbrauch von `0 kWh` oder keinen verwertbaren Wert liefert. Das ist nicht automatisch ein Fehler der App; die Rohdaten und deren Aktualität sollten geprüft werden.
+Die Collector protokollieren Erfolg, Fehler, Laufzeit und Datensatzanzahl in `collection_runs`. Veraltete oder fehlende Providerläufe erscheinen im Statusbericht.
 
 ## Externer Zugriff über Tailscale
 
@@ -217,7 +218,7 @@ Der aktuelle Tailscale-Zugriff ist auf das Dashboard begrenzt. Eine spätere Ver
 
 ## Migration nach 0.9a
 
-Die Streamlit-Version `0.9a` ist als `v0.9a` archiviert. Die schrittweise Zielarchitektur mit FastAPI, SvelteKit, unabhängigen Collectors, SQLite-Migrationen, Parallelbetrieb und Rollback ist in [MIGRATION_PLAN.md](MIGRATION_PLAN.md) beschrieben.
+Die Streamlit-Version `0.9a` ist als `v0.9a` archiviert. Der produktive Migrationsstand läuft auf Commit `9c02dd6` oder neuer. Bei Problemen wird der User-Service gestoppt und der archivierte Streamlit-Fallback wiederhergestellt; Tailscale bleibt auf `8501`.
 
 ## Systemd-Betrieb
 

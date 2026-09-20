@@ -88,14 +88,18 @@ Status: abgeschlossen.
 
 Ergebnis: Backend-unabhängige, testbare Datenverträge.
 
-### Wiederanlaufstatus nach unterbrochener Arbeit
+### Wiederanlaufstatus und produktiver Swap
 
-Stand: 2026-09-20. Der Wiederanlauf auf `proxubuntu01` ist technisch sauber:
+Stand: 2026-09-20. Der produktive Swap auf `proxubuntu01` ist durchgeführt und verifiziert:
 
 - `main` und `origin/main` zeigen auf denselben Commit.
 - Die vollständige Testsuite ist grün; die Migrationstests validieren API, Read-only-Datenzugriff und den statischen UI-Einstieg.
 - Die operative Datenbank ist vorhanden und wird von der Migrations-API ausschließlich lesend geöffnet.
-- Der gemeinsame Checkpoint `1b075fe` ist committed und nach `origin/main` gepusht; weitere Rechner können jetzt mit `git pull --ff-only` synchronisieren.
+- Der produktive Migrationsstand läuft auf `8501`; der aktuelle Code ist nach `origin/main` gepusht.
+- Streamlit bleibt über `v0.9a` und den archivierten Service als Rollback-Basis erhalten.
+- Tailscale Serve zeigt auf `http://127.0.0.1:8501`.
+- `homedash.service` startet `migration.api:app` und genau einen Collector-Satz.
+- Homematic und Viessmann schreiben erfolgreiche Runs in `collection_runs`.
 
 Nächste Reihenfolge:
 
@@ -103,7 +107,8 @@ Nächste Reihenfolge:
 2. Erledigt: Read-only-Ausgaben von `8503` und dem produktiven Repository-Pfad auf `8501` verglichen; 14 Räume und die Wärmepumpe stimmen überein.
 3. Erledigt: Datenverträge für Sensor/Snapshot mit `source_timestamp`, `quality` und `is_stale` sowie Contract-Tests ergänzt.
 4. Erledigt: Homematic- und Viessmann-Collector mit Retry, 30-Sekunden-Provider-Timeout, Backoff und `collection_runs` stabilisiert; die produktiven Prozesse benötigen für die Aktivierung einen kontrollierten Neustart.
-5. Als nächstes SQLite-WAL, Alembic, Retention und Restore auf einer Datenbankkopie einführen; der produktive Datenpfad bleibt bis zur Abnahme unverändert.
+5. Erledigt: produktiven Migration-Service auf `8501` umgeschaltet, Collector-Exklusivität geprüft und Tailscale-Zugriff verifiziert.
+6. Als nächstes SQLite-WAL, Alembic, Retention und Restore auf einer Datenbankkopie als nachgelagerte Betriebsverbesserungen einführen.
 
 ### Phase 2: Collector und Persistenz
 
@@ -161,7 +166,10 @@ Mobile Anforderungen:
 
 ### Phase 5: Parallelbetrieb
 
-- produktive Streamlit-App auf `8501` unverändert aktiv halten
+Status: abgeschlossen; der produktive Dienst ist auf den Migrationsstack umgeschaltet.
+
+- produktive Migration-API/UI auf `8501` aktiv halten
+- Streamlit nur noch als archivierten Rollback-Fallback verwenden
 - neuen Migrationstestserver ausschließlich auf `8503` starten
 - `8503` zunächst als reine Test-UI ohne Homematic-/Viessmann-Collector betreiben
 - bis zur Abnahme darf nur `8501` Provider abfragen und die operative Datenbank aktualisieren
@@ -188,12 +196,24 @@ Abnahmekriterien:
 
 ### Phase 6: Umschalten und Aufräumen
 
-- neuen Stack als systemd-Service produktiv schalten
+Status: Umschaltung abgeschlossen am 2026-09-20.
+
+- neuen Stack als `homedash.service` produktiv schalten
 - Tailscale Serve auf den neuen lokalen Backend-/Proxy-Port zeigen lassen
 - Streamlit als deaktivierbaren Fallback behalten
 - mindestens eine Betriebsperiode beobachten
 - erst danach Streamlit-Code und alte Service-Konfiguration entfernen
 - Migration dokumentieren und Release taggen
+
+Swap-Runbook:
+
+1. `python scripts/backup_database.py --verify` ausführen.
+2. Streamlit-Service und Datenbankbackup archivieren; `v0.9a` bleibt Rollback-Basis.
+3. `homedash.service` auf `scripts/run_migration_prod.sh` umstellen.
+4. Service neu starten und genau einen Homematic- sowie einen Viessmann-Collector prüfen.
+5. Health, Home, Raumberichte, Diagramme, Wärmepumpenschemata, Heizkurve und Wetter prüfen.
+6. Tailscale Serve auf `8501` prüfen.
+7. Bei Fehlern Migration-Service stoppen und den archivierten Streamlit-Fallback auf `8501` starten.
 
 ## Deployment-Ziel
 

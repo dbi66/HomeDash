@@ -25,7 +25,6 @@ function setView(view) {
 
 function renderHeader() {
   document.querySelector("#app-version").textContent = `HomeClimate · ${appLabel}`;
-  document.querySelector("#app-description").textContent = isProduction ? "Produktiver read-only Datenbestand" : "Read-only Vorschau auf den produktiven Datenbestand";
   document.querySelector("#app-status").textContent = `${window.location.port || "80"} · API`;
   const formatFreshness = (timestamp) => {
     if (!timestamp) return "nicht verfügbar";

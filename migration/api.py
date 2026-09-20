@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.models import HeatPumpSnapshot
 from src.monitoring import build_heat_pump_metrics
-from src.viessmann_heatpump import feature_values
+from src.viessmann_heatpump import feature_values, system_map
 
 
 DATABASE_PATH = Path(os.getenv("HOMEDASH_DATABASE", "data/heating_data.db"))
@@ -307,6 +307,12 @@ def heat_pump_report() -> dict[str, Any] | None:
         "recorded_at": latest_row["recorded_at"],
         "metrics": asdict(build_heat_pump_metrics(snapshot, history)),
         "features": feature_values(snapshot),
+        "system_map": system_map(snapshot),
+        "feature_timestamps": {
+            str(item.get("feature")): str(item.get("timestamp"))
+            for item in snapshot.features.get("data", [])
+            if isinstance(item, dict) and item.get("timestamp")
+        },
     }
 
 

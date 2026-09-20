@@ -95,15 +95,15 @@ Stand: 2026-09-20. Der Wiederanlauf auf `proxubuntu01` ist technisch sauber:
 - `main` und `origin/main` zeigen auf denselben Commit.
 - Die vollständige Testsuite ist grün; die Migrationstests validieren API, Read-only-Datenzugriff und den statischen UI-Einstieg.
 - Die operative Datenbank ist vorhanden und wird von der Migrations-API ausschließlich lesend geöffnet.
-- Die begonnenen Änderungen in `migration/` sind noch lokal und müssen als gemeinsamer Checkpoint committed und gepusht werden, bevor von einem anderen Checkout weitergearbeitet wird.
+- Der gemeinsame Checkpoint `1b075fe` ist committed und nach `origin/main` gepusht; weitere Rechner können jetzt mit `git pull --ff-only` synchronisieren.
 
 Nächste Reihenfolge:
 
-1. Erledigt: `8503` ohne Collector gestartet und `/health/live`, `/health/ready`, `/api/v1/home`, `/api/v1/status` sowie `/app.js` geprüft; alle Endpunkte antworten erfolgreich.
-2. Lokalen Migrations-Slice als Checkpoint committen und nach `origin/main` pushen.
-3. Erledigt: Browser-Smoke-Test für 320px, 390px, 768px und Desktop; Raumdetail, Historie und Wärmepumpenansicht funktionieren ohne horizontalen Überlauf.
-4. Read-only-Ausgaben gegen die Streamlit-Referenz auf `8501` vergleichen, ohne zusätzliche Provider-Aufrufe zuzulassen.
-5. Erst nach erfolgreichem Vergleich die nächsten Datenverträge und Collector-/Persistenzschritte aus Phase 1 und 2 beginnen.
+1. Erledigt: `8503` ohne Collector und der Browser-Smoke-Test für 320px, 390px, 768px und Desktop sind geprüft; Raumdetail, Historie und Wärmepumpenansicht funktionieren ohne horizontalen Überlauf.
+2. Als nächstes die Read-only-Ausgaben von `8503` gegen die Streamlit-Referenz auf `8501` vergleichen und zusätzliche Provider-Aufrufe ausschließen.
+3. Danach die Datenverträge für Raum, Sensor, Snapshot, Providerstatus, `source_timestamp`, `quality` und `is_stale` als Contract-Tests festschreiben.
+4. Anschließend Homematic- und Viessmann-Collector als getrennte, beobachtbare Jobs mit Retry, Timeout, Backoff und `collection_runs` stabilisieren.
+5. Erst danach SQLite-WAL, Alembic, Retention und Restore auf einer Datenbankkopie einführen; der produktive Datenpfad bleibt bis zur Abnahme unverändert.
 
 ### Phase 2: Collector und Persistenz
 

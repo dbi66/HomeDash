@@ -32,16 +32,18 @@ def render_monitoring_summary(readings: list[dict[str, object]], database_path: 
             st.info(message)
     if metrics is None:
         return
-    metric_columns = st.columns(4)
     metric_values = (
         ("Energie heute", f"{metrics.produced_energy_today_kwh:.1f} kWh", "erzeugt"),
         ("Stromkosten heute", f"{metrics.daily_energy_cost:.2f} €" if metrics.daily_energy_cost is not None else "n/a", "bei konfiguriertem Strompreis"),
         ("Verdichterstarts", f"{metrics.starts_24h:.0f}" if metrics.starts_24h is not None else "n/a", "letzte 24h"),
         ("Ø Zyklusdauer", f"{metrics.average_cycle_minutes:.1f} min" if metrics.average_cycle_minutes is not None else "n/a", "je Verdichterstart"),
     )
-    for column, (label, value, detail) in zip(metric_columns, metric_values):
-        with column:
-            st.metric(label, value, help=detail)
+    metric_cards = "".join(
+        f'<article class="monitoring-metric"><div class="monitoring-metric__label">{label}</div>'
+        f'<div class="monitoring-metric__value">{value}</div><div class="monitoring-metric__detail">{detail}</div></article>'
+        for label, value, detail in metric_values
+    )
+    st.markdown(f'<div class="monitoring-metrics">{metric_cards}</div>', unsafe_allow_html=True)
     below_target = [reading for reading in readings if float(reading["target_temperature"]) - float(reading["current_temperature"]) > 0.5]
     st.caption(
         f"Heizungswirkung: {len(below_target)} Räume liegen mehr als 0,5 °C unter dem Ziel. SPF gesamt: {metrics.spf_total:.1f} · Betriebsmodus: {metrics.operating_mode}."

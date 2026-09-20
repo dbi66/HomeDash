@@ -116,11 +116,18 @@ def render_overview(
 
 def render_overview_graphs(room_names: list[str], database_path: Union[str, Path]) -> None:
     st.markdown('<div class="level-heading">Alle Diagramme</div>', unsafe_allow_html=True)
+    st.caption("Vergleich der Raumverläufe. Wähle die Messreihen einmal für alle Räume.")
     hours = st.selectbox(
-        "History range",
+        "Zeitraum",
         options=(24, 168, 720),
-        format_func=lambda value: {24: "Last 24 hours", 168: "Last 7 days", 720: "Last 30 days"}[value],
+        format_func=lambda value: {24: "Letzte 24 Stunden", 168: "Letzte 7 Tage", 720: "Letzte 30 Tage"}[value],
         key="overview-all-graphs-window",
+    )
+    selected_series = st.multiselect(
+        "Messreihen",
+        options=("IST", "Ziel", "Feuchtigkeit", "Ventil"),
+        default=("IST", "Ziel", "Feuchtigkeit", "Ventil"),
+        key="overview-all-graphs-series",
     )
     graph_columns = st.columns(2)
     for index, room_name in enumerate(room_names):
@@ -128,7 +135,14 @@ def render_overview_graphs(room_names: list[str], database_path: Union[str, Path
         if len(history) < 2:
             continue
         with graph_columns[index % 2]:
-            render_climate_chart(pd.DataFrame(history), room_name, 180, "Fixed range", "all")
+            render_climate_chart(
+                pd.DataFrame(history),
+                room_name,
+                220,
+                "Fixed range",
+                "all",
+                selected_series=selected_series,
+            )
 
 
 def render_valve_status_table(readings: list[Reading]) -> None:

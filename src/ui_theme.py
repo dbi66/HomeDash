@@ -99,6 +99,43 @@ APP_THEME = """
     .home-tile__value { color: #102a43; font-size: 1.3rem; font-weight: 800; margin-top: 0.4rem; }
     .home-tile__detail { color: #486581; font-size: 0.76rem; line-height: 1.45; margin-top: 0.15rem; }
 
+    .monitoring-metrics {
+        display: grid;
+        gap: 0.55rem;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin: 0.2rem 0 0.45rem;
+    }
+
+    .monitoring-metric {
+        background: #ffffff;
+        border: 1px solid #d9e2ec;
+        border-radius: 8px;
+        min-width: 0;
+        padding: 0.55rem 0.65rem;
+    }
+
+    .monitoring-metric__label {
+        color: #486581;
+        font-size: 0.7rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .monitoring-metric__value {
+        color: #102a43;
+        font-size: 1.1rem;
+        font-weight: 800;
+        line-height: 1.15;
+        margin-top: 0.25rem;
+    }
+
+    .monitoring-metric__detail {
+        color: #627d98;
+        font-size: 0.65rem;
+        line-height: 1.2;
+        margin-top: 0.15rem;
+    }
+
     .stButton > button {
         box-sizing: border-box !important;
         min-width: 0 !important;
@@ -364,7 +401,7 @@ APP_THEME = """
     }
 
     @media (max-width: 640px) {
-        .block-container {
+        [data-testid="stAppViewContainer"] .main .block-container {
             padding: 1rem 0.75rem 2rem;
         }
 
@@ -421,6 +458,28 @@ APP_THEME = """
             padding: 0.65rem;
         }
 
+        .monitoring-metrics {
+            gap: 0.4rem;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            margin-bottom: 0.35rem;
+        }
+
+        .monitoring-metric {
+            padding: 0.5rem 0.55rem;
+        }
+
+        .monitoring-metric__label {
+            font-size: 0.65rem;
+        }
+
+        .monitoring-metric__value {
+            font-size: 1rem;
+        }
+
+        .monitoring-metric__detail {
+            font-size: 0.58rem;
+        }
+
         .room-card__name {
             font-size: 0.78rem;
         }
@@ -453,7 +512,7 @@ APP_THEME = """
         }
 
         .stButton button[kind="secondary"] {
-            min-height: 96px;
+            min-height: 112px;
             padding: 0.65rem;
         }
 
@@ -467,6 +526,10 @@ APP_THEME = """
         [class*="st-key-room-tile-"] button p:nth-child(2) {
             font-size: 0.62rem;
             overflow-wrap: anywhere;
+        }
+
+        [class*="st-key-overview-room-"] button {
+            min-height: 112px !important;
         }
 
         [class*="st-key-overview-room-"] button > div,

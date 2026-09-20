@@ -22,6 +22,7 @@ def render_climate_chart(
     height: int,
     scale_mode: str,
     key_prefix: str,
+    selected_series: Optional[list[str]] = None,
 ) -> None:
     history_frame = history_frame.copy()
     history_frame["recorded_at"] = pd.to_datetime(history_frame["recorded_at"], utc=True)
@@ -36,7 +37,7 @@ def render_climate_chart(
     target["series"] = "Ziel"
     humidity["series"] = "Feuchtigkeit"
     valve["series"] = "Ventil"
-    selected_series = _selected_series(title, key_prefix)
+    selected_series = selected_series if selected_series is not None else _selected_series(title, key_prefix)
     if not selected_series:
         st.info("Select at least one line.")
         return

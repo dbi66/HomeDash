@@ -175,7 +175,7 @@ def build_system_alerts(
                 SystemAlert(
                     "info",
                     "Stromverbrauch nicht gemeldet",
-                    f"Viessmann meldet heute {metrics.supplied_energy_today_kwh:.1f} kWh Stromverbrauch, obwohl {metrics.produced_energy_today_kwh:.1f} kWh Wärme erzeugt wurden. Verbrauchszähler und Viessmann-Datenversorgung prüfen.",
+                    f"Viessmann meldet {metrics.supplied_energy_today_kwh:.1f} kWh Stromverbrauch bei {metrics.produced_energy_today_kwh:.1f} kWh Wärmeerzeugung. Verbrauchsmessung prüfen.",
                 )
             )
     return alerts

@@ -57,7 +57,17 @@ function chart(points, selectedSeries = state.chartSeries) {
   const percentScale = (value) => height - pad - value * (height - pad * 2) / 100;
   const tempTicks = [10, 15, 20, 25, 30].map((value) => `<line x1="${pad}" y1="${y(value)}" x2="${width-pad}" y2="${y(value)}" stroke="#e6edf3"/><text x="${pad-6}" y="${y(value)+4}" text-anchor="end" fill="#627d98" font-size="11">${value}</text>`).join("");
   const percentTicks = [0, 20, 40, 60, 80, 100].map((value) => `<text x="${width-pad+6}" y="${percentScale(value)+4}" fill="#627d98" font-size="11">${value}</text>`).join("");
-  const timeLabels = [0, Math.floor(points.length / 2), points.length - 1].filter((index, position, indexes) => indexes.indexOf(index) === position).map((index) => `<text x="${x(index)}" y="${height-5}" text-anchor="middle" fill="#627d98" font-size="10">${esc(new Date(points[index].recorded_at).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}))}</text>`).join("");
+  const timestamps = points.map((point) => new Date(point.recorded_at).getTime());
+  const firstTimestamp = timestamps[0]; const lastTimestamp = timestamps[timestamps.length - 1];
+  const firstFullHour = new Date(firstTimestamp); firstFullHour.setMinutes(0, 0, 0); if (firstFullHour.getTime() < firstTimestamp) firstFullHour.setHours(firstFullHour.getHours() + 1);
+  const timeTicks = [];
+  for (const tick = firstFullHour; tick.getTime() <= lastTimestamp; tick.setHours(tick.getHours() + 1)) {
+    if (tick.getHours() % 4 !== 0) continue;
+    const tickTime = tick.getTime();
+    const ratio = (tickTime - firstTimestamp) / Math.max(1, lastTimestamp - firstTimestamp);
+    timeTicks.push({ x: pad + ratio * (width - pad * 2), label: tick.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) });
+  }
+  const timeLabels = timeTicks.map((tick) => `<line x1="${tick.x}" y1="${pad}" x2="${tick.x}" y2="${height-pad}" stroke="#eef2f6"/><text x="${tick.x}" y="${height-5}" text-anchor="middle" fill="#627d98" font-size="10">${esc(tick.label)}</text>`).join("");
   const legend = [selectedSeries.current_temperature ? '<span style="color:#c2410c">Ist (°C)</span>' : "", selectedSeries.target_temperature ? '<span style="color:#64748b">Ziel (°C)</span>' : "", selectedSeries.humidity ? '<span style="color:#7c3aed">Feuchte (%)</span>' : "", selectedSeries.valve_position ? '<span style="color:#e03131">Ventil (%)</span>' : ""].join("");
   return `<div class="chart-wrap"><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Raumverlauf mit Temperatur-, Feuchte- und Ventillinien">${tempTicks}<line x1="${pad}" y1="${pad}" x2="${pad}" y2="${height-pad}" stroke="#9fb3c8"/><line x1="${width-pad}" y1="${pad}" x2="${width-pad}" y2="${height-pad}" stroke="#9fb3c8"/><line x1="${pad}" y1="${height-pad}" x2="${width-pad}" y2="${height-pad}" stroke="#9fb3c8"/>${percentTicks}${timeLabels}<text class="chart-axis-title" x="${pad}" y="12">Temperatur (°C)</text><text class="chart-axis-title" x="${width-pad}" y="12" text-anchor="end">Feuchte / Ventil (%)</text>${line("current_temperature", "#c2410c")}${line("target_temperature", "#64748b", "7 5")}${line("humidity", "#7c3aed", "", percentScale)}${line("valve_position", "#e03131", "2 2", percentScale)}</svg><div class="chart-legend">${legend}</div></div>`;
 }

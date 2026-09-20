@@ -197,7 +197,7 @@ async function render() {
     else renderHome();
     document.querySelectorAll("[data-room]").forEach((button) => { button.onclick = () => { state.selectedRoom = button.dataset.room; state.view = "room"; render(); }; });
     document.querySelectorAll("[data-view]").forEach((button) => { button.onclick = () => setView(button.dataset.view); });
-    document.querySelectorAll("[data-series]").forEach((button) => { button.onclick = () => { state.chartSeries[button.dataset.series] = !state.chartSeries[button.dataset.series]; renderCharts(); }; });
+    document.querySelectorAll("[data-series]").forEach((button) => { button.onclick = () => { state.chartSeries[button.dataset.series] = !state.chartSeries[button.dataset.series]; render(); }; });
   } catch (error) {
     document.querySelector("#content").innerHTML = `<div class="card error">Migration API nicht erreichbar: ${esc(error.message)}</div>`;
   }

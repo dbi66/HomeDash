@@ -1,4 +1,5 @@
 const state = { home: null, rooms: [], view: "home", chartSeries: { current_temperature: true, target_temperature: true, humidity: true, valve_position: true } };
+let chartsRenderGeneration = 0;
 const isProduction = window.location.port === "8501";
 const appLabel = isProduction ? "Produktiv" : "Migrationstest";
 document.title = isProduction ? "HomeClimate Dashboard" : "HomeClimate Migration";
@@ -126,10 +127,11 @@ function spiderChart(readings, key, minimum, maximum, color) {
 }
 
 async function renderCharts() {
+  const renderGeneration = ++chartsRenderGeneration;
   document.querySelector("#page-title").textContent = "Alle Diagramme";
   document.querySelector("#metrics").innerHTML = [metric("Diagramme", state.rooms.length, "alle Räume"), metric("Zeitraum", "24 h", "gemeinsame Auswahl"), metric("Messreihen", "Ist · Ziel", "Temperatur"), metric("Datenzugriff", "read-only", "keine Provider-Abfragen")].join("");
   const histories = await Promise.all(state.rooms.map(async (room) => ({ room, points: await getJson(`/api/v1/rooms/${encodeURIComponent(room.room_name)}/history?hours=24`) })));
-  if (state.view !== "charts") return;
+  if (state.view !== "charts" || renderGeneration !== chartsRenderGeneration) return;
   const controls = Object.entries({ current_temperature: "Ist", target_temperature: "Ziel", humidity: "Feuchtigkeit", valve_position: "Ventil" }).map(([key, label]) => `<button class="${state.chartSeries[key] ? "active" : ""}" data-series="${key}">${label}</button>`).join("");
   document.querySelector("#content").innerHTML = `<section class="section"><h2>Raumverläufe · letzte 24 Stunden</h2><div class="series-controls" aria-label="Messreihen">${controls}</div><div class="chart-grid">${histories.map(({room, points}) => `<article class="card"><h2>${esc(room.room_name)}</h2>${chart(points)}</article>`).join("")}</div></section>`;
 }
@@ -197,7 +199,7 @@ async function render() {
     else renderHome();
     document.querySelectorAll("[data-room]").forEach((button) => { button.onclick = () => { state.selectedRoom = button.dataset.room; state.view = "room"; render(); }; });
     document.querySelectorAll("[data-view]").forEach((button) => { button.onclick = () => setView(button.dataset.view); });
-    document.querySelectorAll("[data-series]").forEach((button) => { button.onclick = () => { state.chartSeries[button.dataset.series] = !state.chartSeries[button.dataset.series]; render(); }; });
+    document.querySelectorAll("[data-series]").forEach((button) => { button.onclick = () => { state.chartSeries[button.dataset.series] = !state.chartSeries[button.dataset.series]; button.classList.toggle("active", state.chartSeries[button.dataset.series]); render(); }; });
   } catch (error) {
     document.querySelector("#content").innerHTML = `<div class="card error">Migration API nicht erreichbar: ${esc(error.message)}</div>`;
   }

@@ -258,7 +258,10 @@ def heat_pump() -> HeatPumpResponse | None:
 
 @app.get("/api/v1/weather")
 def weather() -> dict[str, Any]:
-    return {"status": "not_cached", "message": "Weather is not yet persisted by the production collector."}
+    from src.weather import LOCATION_NAME, fetch_forecast
+
+    forecast = fetch_forecast()
+    return {"location": LOCATION_NAME, "daily": forecast["daily"]}
 
 
 @app.get("/api/v1/rooms/{room_name}/history", response_model=list[HistoryPointResponse])

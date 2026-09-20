@@ -38,6 +38,13 @@
     .chart-wrap { overflow-x:auto; }
     .chart-wrap svg { display:block; min-width:560px; width:100%; }
     .chart-legend { color:var(--muted); display:flex; font-size:.75rem; gap:18px; padding:0 0 4px 28px; }
+    .report-table { border-collapse:collapse; width:100%; }
+    .report-table th, .report-table td { border-bottom:1px solid var(--line); padding:9px 7px; text-align:left; }
+    .report-table th { color:var(--muted); font-size:.72rem; text-transform:uppercase; }
+    .chart-grid { display:grid; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .chart-grid .card { overflow:hidden; }
+    .forecast-grid { display:grid; gap:10px; grid-template-columns:repeat(4,minmax(0,1fr)); }
+    .forecast-day { min-width:0; }
     .actual::before { color:#c2410c; content:"━ "; font-weight:900; }
     .target::before { color:#64748b; content:"┄ "; font-weight:900; }
     .error { border-color:#fecaca; color:#991b1b; }
@@ -47,6 +54,7 @@
       .status { font-size:.68rem; }
       .grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .rooms { grid-template-columns:1fr; }
+      .chart-grid, .forecast-grid { grid-template-columns:1fr; }
       .card { padding:11px; }
     }
   </style>
@@ -57,11 +65,11 @@
       <div><div class="eyebrow">HomeClimate · 0.10.0-dev</div><h1>Migration Dashboard</h1><p class="meta">Read-only Vorschau auf den produktiven Datenbestand</p></div>
       <div class="status">8503 · API</div>
     </header>
-    <nav aria-label="Migration views"><button class="active" data-view="home">Home</button><button data-view="rooms">Alle Räume</button><button data-view="heat-pump">Wärmepumpe</button></nav>
+    <nav aria-label="Migration views"><button class="active" data-view="home">Home</button><button data-view="rooms">Alle Räume</button><button data-view="room-report">Raumbericht</button><button data-view="charts">Alle Diagramme</button><button data-view="heat-pump">Wärmepumpe</button><button data-view="weather">Wetter</button></nav>
     <section class="hero"><div class="eyebrow" style="color:#bcccdc">Neue Oberfläche</div><h2 id="page-title" style="font-size:1.35rem;margin:0">Dein Zuhause auf einen Blick</h2><p class="meta" id="freshness">Daten werden geladen ...</p></section>
     <section class="grid" id="metrics"></section>
     <div id="content"><p class="empty">Daten werden geladen ...</p></div>
   </main>
-  <script src="/app.js"></script>
+  <script src="/app.js?v=0.10.2"></script>
 </body>
 </html>

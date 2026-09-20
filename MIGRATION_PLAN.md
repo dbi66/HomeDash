@@ -131,12 +131,12 @@ Ergebnis: alle Dashboard-Daten sind ohne Streamlit abrufbar.
 
 ### Phase 4: SvelteKit-Oberfläche
 
-Vergleich 2026-09-20:
+Vergleich und Dev-Erweiterung 2026-09-20:
 
 - Wertegleichheit bestätigt: 14 Räume, Sollwerte, Feuchte, Ventilstellung, Durchschnittstemperatur und Wärmepumpen-Kernwerte stimmen zwischen `8503` und `8501` überein.
-- Dev geprüft: Home, Raumvergleich, Raumdetail mit Historie und kompakter Wärmepumpenstatus.
-- Noch fehlend im Dev-Slice: vollständiger Raumbericht, „Alle Diagramme“ mit gemeinsamer Messreihenauswahl, vollständiger Wärmepumpenbericht und 7-Tage-Wetterbericht.
-- Die fehlenden Ansichten sind der nächste UI-Migrationsumfang; der produktive Streamlit-Fallback bleibt bis zu deren Abnahme aktiv.
+- Dev geprüft und ergänzt: Home, Raumvergleich, Raumbericht, Raumdetail mit Historie, 14 gemeinsame Temperaturdiagramme, Wärmepumpenstatus und 7-Tage-Wetterbericht.
+- Die Dev-Diagramme bieten zunächst Ist-/Zieltemperatur; Feuchte und Ventilreihen sowie die erweiterten Wärmepumpen-Rohdaten bleiben der nächsten UI-Ausbaustufe vorbehalten.
+- Der produktive Streamlit-Fallback bleibt bis zur Abnahme der erweiterten Messreihenauswahl aktiv.
 
 Reihenfolge der Views:
 

@@ -21,6 +21,7 @@ from src.viessmann_heatpump import feature_values, heat_pump_snapshots_from_inve
 from src.viessmann_provider import ViessmannProviderError, load_client, read_inventory
 from src.weather import LOCATION_NAME, fetch_forecast, format_day, weather_label
 from src.weather_view import render_weather_report as render_weather_page
+from src.settings_view import render_settings_dialog
 
 
 APP_NAME = "HomeClimate Dashboard"
@@ -1511,90 +1512,21 @@ st.session_state["navigation-last"] = function_choice
 
 apply_navigation(function_choice, st.session_state, st.query_params)
 
-@st.dialog("Einstellungen")
-def settings_dialog() -> None:
-    homematic_tab, viessmann_tab = st.tabs(["Homematic IP", "Viessmann"])
-    with homematic_tab:
-        if st.button("Homematic IP Geraete neu einlesen", type="primary"):
-            try:
-                st.session_state["device_home"] = load_home()
-                st.success("Homematic IP Geraete wurden neu eingelesen.")
-            except HomematicProviderError as error:
-                st.error(str(error))
-
-        if st.button("Geraetehierarchie anzeigen"):
-            if st.session_state.get("device_home") is None:
-                try:
-                    st.session_state["device_home"] = load_home()
-                except HomematicProviderError as error:
-                    st.error(str(error))
-            st.session_state["show_device_hierarchy"] = not st.session_state.get(
-                "show_device_hierarchy", False
-            )
-
-        if st.session_state.get("show_device_hierarchy", False):
-            device_home = st.session_state.get("device_home")
-            if device_home is None:
-                st.info("Lese zuerst die Homematic IP Geraete ein.")
-            else:
-                render_device_hierarchy(device_home)
-
-    with viessmann_tab:
-        st.caption("Read-only access. Credentials are held in this browser session only.")
-        with st.form("viessmann-settings-form"):
-            username = st.text_input("Viessmann account email", key="viessmann-username")
-            password = st.text_input("Viessmann account password", type="password", key="viessmann-password")
-            client_id = st.text_input("Viessmann API client ID", key="viessmann-client-id")
-            token_file = st.text_input(
-                "Token file",
-                value="data/vicare_token.json",
-                key="viessmann-token-file",
-            )
-            load_viessmann = st.form_submit_button("Viessmann-Daten einlesen", type="primary")
-            load_heat_pump = st.form_submit_button("Wärmepumpe read-only einlesen")
-
-        if load_viessmann or load_heat_pump:
-            try:
-                client = load_client(username, password, client_id, token_file)
-                if load_viessmann:
-                    inventory = read_inventory(client)
-                    save_viessmann_snapshots(DATABASE_PATH, inventory)
-                    st.session_state["viessmann_inventory"] = inventory
-                    st.success("Viessmann-Daten wurden read-only eingelesen und archiviert.")
-                if load_heat_pump:
-                    heat_pumps = read_heat_pumps(client)
-                    st.session_state["viessmann_heat_pumps"] = heat_pumps
-                    save_viessmann_snapshots(
-                        DATABASE_PATH,
-                        [
-                            {
-                                "id": heat_pump.device_id,
-                                "model": heat_pump.model,
-                                "online": heat_pump.online,
-                                "features": heat_pump.features,
-                            }
-                            for heat_pump in heat_pumps
-                        ],
-                    )
-                    st.success("Wärmepumpen-Daten wurden read-only eingelesen.")
-            except ViessmannProviderError as error:
-                st.error(str(error))
-
-        if not st.session_state.get("viessmann_heat_pumps"):
-            archived_heat_pumps = heat_pump_snapshots_from_inventory(
-                get_latest_viessmann_snapshots(DATABASE_PATH)
-            )
-            if archived_heat_pumps:
-                st.session_state["viessmann_heat_pumps"] = archived_heat_pumps
-
-        if st.session_state.get("viessmann_inventory"):
-            render_viessmann_inventory(st.session_state["viessmann_inventory"])
-        if st.session_state.get("viessmann_heat_pumps"):
-            st.info("Wärmepumpenbericht geladen. Öffne ihn über die Navigation.")
-
-
 if st.session_state.get("show_settings", False):
-    settings_dialog()
+    render_settings_dialog(
+        database_path=DATABASE_PATH,
+        load_home=load_home,
+        load_client=load_client,
+        read_inventory=read_inventory,
+        read_heat_pumps=read_heat_pumps,
+        save_viessmann_snapshots=save_viessmann_snapshots,
+        latest_viessmann_snapshots=get_latest_viessmann_snapshots,
+        heat_pumps_from_inventory=heat_pump_snapshots_from_inventory,
+        render_device_hierarchy=render_device_hierarchy,
+        render_viessmann_inventory=render_viessmann_inventory,
+        homematic_error=HomematicProviderError,
+        viessmann_error=ViessmannProviderError,
+    )
 
 if function_choice == "Wetter":
     render_weather_page()

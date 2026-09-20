@@ -1,5 +1,5 @@
 [Unit]
-Description=HomeDash dashboard and collector
+Description=HomeDash migration API and collector
 After=network-online.target
 Wants=network-online.target
 
@@ -12,7 +12,7 @@ Environment=HOMEDASH_DATABASE=/home/dennis/Developer/HomeDash/data/heating_data.
 Environment=HOMEDASH_COLLECTOR_INTERVAL=900
 Environment=HOMEDASH_VIESSMANN_INTERVAL=1800
 EnvironmentFile=-/home/dennis/.config/homedash/viessmann.env
-ExecStart=/bin/sh /home/dennis/Developer/HomeDash/scripts/run_dashboard.sh
+ExecStart=/bin/sh /home/dennis/Developer/HomeDash/scripts/run_migration_prod.sh
 Restart=always
 RestartSec=5
 

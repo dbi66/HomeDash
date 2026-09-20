@@ -88,6 +88,23 @@ Status: abgeschlossen.
 
 Ergebnis: Backend-unabhängige, testbare Datenverträge.
 
+### Wiederanlaufstatus nach unterbrochener Arbeit
+
+Stand: 2026-09-20. Der Wiederanlauf auf `proxubuntu01` ist technisch sauber:
+
+- `main` und `origin/main` zeigen auf denselben Commit.
+- Die vollständige Testsuite ist grün; die Migrationstests validieren API, Read-only-Datenzugriff und den statischen UI-Einstieg.
+- Die operative Datenbank ist vorhanden und wird von der Migrations-API ausschließlich lesend geöffnet.
+- Die begonnenen Änderungen in `migration/` sind noch lokal und müssen als gemeinsamer Checkpoint committed und gepusht werden, bevor von einem anderen Checkout weitergearbeitet wird.
+
+Nächste Reihenfolge:
+
+1. Erledigt: `8503` ohne Collector gestartet und `/health/live`, `/health/ready`, `/api/v1/home`, `/api/v1/status` sowie `/app.js` geprüft; alle Endpunkte antworten erfolgreich.
+2. Lokalen Migrations-Slice als Checkpoint committen und nach `origin/main` pushen.
+3. Erledigt: Browser-Smoke-Test für 320px, 390px, 768px und Desktop; Raumdetail, Historie und Wärmepumpenansicht funktionieren ohne horizontalen Überlauf.
+4. Read-only-Ausgaben gegen die Streamlit-Referenz auf `8501` vergleichen, ohne zusätzliche Provider-Aufrufe zuzulassen.
+5. Erst nach erfolgreichem Vergleich die nächsten Datenverträge und Collector-/Persistenzschritte aus Phase 1 und 2 beginnen.
+
 ### Phase 2: Collector und Persistenz
 
 - Homematic-Collector als eigenständigen Prozess stabilisieren

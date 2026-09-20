@@ -30,6 +30,17 @@
     .room-detail { color:var(--muted); font-size:.72rem; margin-top:8px; }
     .section { margin-top:18px; }
     .empty { color:var(--muted); }
+    nav { display:flex; flex-wrap:wrap; gap:7px; margin:0 0 16px; }
+    nav button, .back-button { background:#fff; border:1px solid var(--line); border-radius:8px; color:var(--ink); cursor:pointer; font:inherit; font-size:.78rem; font-weight:750; padding:9px 12px; }
+    nav button.active, nav button:hover, .back-button:hover { background:#102a43; border-color:#102a43; color:#fff; }
+    .room-card { cursor:pointer; text-align:left; width:100%; }
+    .room-card:hover { border-color:#9fb3c8; box-shadow:0 3px 12px rgba(16,42,67,.08); }
+    .chart-wrap { overflow-x:auto; }
+    .chart-wrap svg { display:block; min-width:560px; width:100%; }
+    .chart-legend { color:var(--muted); display:flex; font-size:.75rem; gap:18px; padding:0 0 4px 28px; }
+    .actual::before { color:#c2410c; content:"━ "; font-weight:900; }
+    .target::before { color:#64748b; content:"┄ "; font-weight:900; }
+    .error { border-color:#fecaca; color:#991b1b; }
     @media (max-width:700px) {
       main { padding:14px 12px 28px; }
       header { align-items:flex-start; }
@@ -46,30 +57,11 @@
       <div><div class="eyebrow">HomeClimate · 0.10.0-dev</div><h1>Migration Dashboard</h1><p class="meta">Read-only Vorschau auf den produktiven Datenbestand</p></div>
       <div class="status">8503 · API</div>
     </header>
-    <section class="hero"><div class="eyebrow" style="color:#bcccdc">Neue Oberfläche</div><h2 style="font-size:1.35rem;margin:0">Dein Zuhause auf einen Blick</h2><p class="meta" id="freshness">Daten werden geladen ...</p></section>
+    <nav aria-label="Migration views"><button class="active" data-view="home">Home</button><button data-view="rooms">Alle Räume</button><button data-view="heat-pump">Wärmepumpe</button></nav>
+    <section class="hero"><div class="eyebrow" style="color:#bcccdc">Neue Oberfläche</div><h2 id="page-title" style="font-size:1.35rem;margin:0">Dein Zuhause auf einen Blick</h2><p class="meta" id="freshness">Daten werden geladen ...</p></section>
     <section class="grid" id="metrics"></section>
-    <section class="section"><h2>Raumstatus</h2><div class="rooms" id="rooms"><p class="empty">Daten werden geladen ...</p></div></section>
-    <section class="section"><h2>Wärmepumpe</h2><div class="card" id="heat-pump"><p class="empty">Daten werden geladen ...</p></div></section>
+    <div id="content"><p class="empty">Daten werden geladen ...</p></div>
   </main>
-  <script>
-    const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[char]));
-    const metric = (label, value, detail) => `<article class="card"><div class="metric-label">${esc(label)}</div><div class="metric-value">${esc(value)}</div><div class="metric-detail">${esc(detail)}</div></article>`;
-    const load = async () => {
-      const response = await fetch('/api/v1/home');
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      document.querySelector('#freshness').textContent = `Homematic: ${data.latest_homematic ?? 'nicht verfügbar'} · Viessmann: ${data.latest_viessmann ?? 'nicht verfügbar'}`;
-      document.querySelector('#metrics').innerHTML = [
-        metric('Räume', data.room_count, `${data.open_valves} Ventile geöffnet`),
-        metric('Ø Raumtemperatur', data.average_temperature == null ? 'n/a' : `${data.average_temperature.toFixed(1)} °C`, 'aktueller Bestand'),
-        metric('Datenzugriff', 'read-only', 'keine Provider-Abfragen'),
-        metric('Teststand', '0.10.0-dev', 'Migration auf Port 8503')
-      ].join('');
-      document.querySelector('#rooms').innerHTML = data.rooms.map(room => `<article class="card"><div class="room-name">${esc(room.room_name)}</div><div class="room-values"><span class="room-value">${room.current_temperature.toFixed(1)} °C</span><span class="room-value">Ziel ${room.target_temperature.toFixed(1)} °C</span><span class="room-value">${room.humidity.toFixed(0)} %</span></div><div class="room-detail">Ventil ${room.valve_position.toFixed(0)} % · ${esc(room.level)}</div></article>`).join('');
-      const heatPump = data.heat_pump;
-      document.querySelector('#heat-pump').innerHTML = heatPump ? `<div class="room-name">${esc(heatPump.model)}</div><div class="room-values"><span class="room-value">Vorlauf ${heatPump.floor_supply_celsius ?? 'n/a'} °C</span><span class="room-value">Puffer ${heatPump.buffer_celsius ?? 'n/a'} °C</span><span class="room-value">Erzeugt heute ${heatPump.produced_energy_today_kwh.toFixed(1)} kWh</span></div><div class="room-detail">Modus ${esc(heatPump.operating_mode ?? 'n/a')} · Verdichter ${heatPump.compressor_active ? 'aktiv' : 'bereit'}</div>` : '<p class="empty">Keine Wärmepumpendaten verfügbar.</p>';
-    };
-    load().catch(error => { document.querySelector('#freshness').textContent = `Migration API nicht erreichbar: ${error.message}`; });
-  </script>
+  <script src="/app.js"></script>
 </body>
 </html>

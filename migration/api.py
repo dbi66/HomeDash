@@ -40,6 +40,36 @@ class HealthResponse(BaseModel):
     latest_viessmann: str | None = None
 
 
+class HeatPumpResponse(BaseModel):
+    model: str
+    online: bool
+    operating_mode: str | None = None
+    compressor_active: bool | None = None
+    floor_supply_celsius: float | None = None
+    buffer_celsius: float | None = None
+    produced_energy_today_kwh: float
+
+
+class AlertResponse(BaseModel):
+    severity: str
+    title: str
+    detail: str
+
+
+class StatusResponse(BaseModel):
+    alerts: list[AlertResponse]
+    latest_homematic: str | None = None
+    latest_viessmann: str | None = None
+
+
+class HistoryPointResponse(BaseModel):
+    recorded_at: str
+    current_temperature: float
+    target_temperature: float
+    humidity: float
+    valve_position: float
+
+
 class HomeResponse(BaseModel):
     rooms: list[RoomReadingResponse]
     room_count: int
@@ -47,7 +77,7 @@ class HomeResponse(BaseModel):
     average_temperature: float | None
     latest_homematic: str | None = None
     latest_viessmann: str | None = None
-    heat_pump: dict[str, Any] | None = None
+    heat_pump: HeatPumpResponse | None = None
 
 
 def _database_path() -> Path:
@@ -132,6 +162,26 @@ def _latest_heat_pump(connection: sqlite3.Connection) -> dict[str, Any] | None:
     }
 
 
+def _freshness_alerts(
+    latest_homematic: str | None,
+    latest_viessmann: str | None,
+) -> list[AlertResponse]:
+    now = datetime.now(timezone.utc)
+    alerts: list[AlertResponse] = []
+    for label, timestamp, limit_minutes in (
+        ("Homematic", latest_homematic, 30),
+        ("Viessmann", latest_viessmann, 60),
+    ):
+        if timestamp is None:
+            alerts.append(AlertResponse(severity="warning", title=f"{label}-Daten fehlen", detail="Es wurde noch kein Snapshot gespeichert."))
+            continue
+        parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        age_minutes = (now - parsed).total_seconds() / 60
+        if age_minutes > limit_minutes:
+            alerts.append(AlertResponse(severity="warning", title=f"{label}-Daten veraltet", detail=f"Letzter Snapshot vor {age_minutes:.0f} Minuten."))
+    return alerts
+
+
 @app.get("/health/live", response_model=HealthResponse)
 def live_health() -> HealthResponse:
     return HealthResponse(status="ok", database="read-only")
@@ -167,7 +217,7 @@ def home() -> HomeResponse:
         with _connect_read_only() as connection:
             raw_rooms = _latest_rooms(connection)
             latest_homematic, latest_viessmann = _latest_timestamps(connection)
-            heat_pump = _latest_heat_pump(connection)
+            raw_heat_pump = _latest_heat_pump(connection)
     except (FileNotFoundError, sqlite3.Error) as error:
         raise HTTPException(status_code=503, detail=f"Database unavailable: {error}") from error
     rooms = [RoomReadingResponse(**room) for room in raw_rooms]
@@ -178,8 +228,32 @@ def home() -> HomeResponse:
         average_temperature=(sum(room.current_temperature for room in rooms) / len(rooms)) if rooms else None,
         latest_homematic=latest_homematic,
         latest_viessmann=latest_viessmann,
-        heat_pump=heat_pump,
+        heat_pump=HeatPumpResponse(**raw_heat_pump) if raw_heat_pump else None,
     )
+
+
+@app.get("/api/v1/status", response_model=StatusResponse)
+def status() -> StatusResponse:
+    try:
+        with _connect_read_only() as connection:
+            latest_homematic, latest_viessmann = _latest_timestamps(connection)
+    except (FileNotFoundError, sqlite3.Error) as error:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {error}") from error
+    return StatusResponse(
+        alerts=_freshness_alerts(latest_homematic, latest_viessmann),
+        latest_homematic=latest_homematic,
+        latest_viessmann=latest_viessmann,
+    )
+
+
+@app.get("/api/v1/heat-pump", response_model=HeatPumpResponse | None)
+def heat_pump() -> HeatPumpResponse | None:
+    try:
+        with _connect_read_only() as connection:
+            raw_heat_pump = _latest_heat_pump(connection)
+    except (FileNotFoundError, sqlite3.Error) as error:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {error}") from error
+    return HeatPumpResponse(**raw_heat_pump) if raw_heat_pump else None
 
 
 @app.get("/api/v1/weather")
@@ -187,11 +261,11 @@ def weather() -> dict[str, Any]:
     return {"status": "not_cached", "message": "Weather is not yet persisted by the production collector."}
 
 
-@app.get("/api/v1/rooms/{room_name}/history", response_model=list[dict[str, Any]])
+@app.get("/api/v1/rooms/{room_name}/history", response_model=list[HistoryPointResponse])
 def room_history(
     room_name: str,
     hours: int = Query(default=24, ge=1, le=720),
-) -> list[dict[str, Any]]:
+) -> list[HistoryPointResponse]:
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
     try:
         with _connect_read_only() as connection:
@@ -207,7 +281,7 @@ def room_history(
             ).fetchall()
     except (FileNotFoundError, sqlite3.Error) as error:
         raise HTTPException(status_code=503, detail=f"Database unavailable: {error}") from error
-    return [dict(row) for row in rows]
+    return [HistoryPointResponse(**dict(row)) for row in rows]
 
 
 app.mount("/", StaticFiles(directory=Path(__file__).with_name("web"), html=True), name="migration-web")

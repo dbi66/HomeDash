@@ -58,6 +58,15 @@ def test_migration_api_serves_home_shell() -> None:
     assert "Migration Dashboard" in response.text
 
 
+def test_migration_api_serves_frontend_entrypoint() -> None:
+    from migration.api import app
+
+    response = TestClient(app).get("/app.js")
+
+    assert response.status_code == 200
+    assert "api/v1/home" in response.text
+
+
 def test_migration_api_home_summary_is_read_only(tmp_path, monkeypatch) -> None:
     database_path = tmp_path / "migration.db"
     initialize_database(database_path)
@@ -84,3 +93,30 @@ def test_migration_api_home_summary_is_read_only(tmp_path, monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json()["room_count"] == 1
     assert response.json()["rooms"][0]["room_name"] == "Küche"
+
+
+def test_migration_api_returns_room_history(tmp_path, monkeypatch) -> None:
+    database_path = tmp_path / "migration.db"
+    initialize_database(database_path)
+    save_readings(
+        database_path,
+        [
+            RoomReading(
+                room_name="Wohnzimmer",
+                current_temperature=22.0,
+                target_temperature=21.0,
+                humidity=50.0,
+                valve_position=0.0,
+                recorded_at=datetime.now(timezone.utc),
+                level="Obergeschoss",
+            )
+        ],
+    )
+    monkeypatch.setenv("HOMEDASH_DATABASE", str(database_path))
+
+    from migration.api import app
+
+    response = TestClient(app).get("/api/v1/rooms/Wohnzimmer/history?hours=24")
+
+    assert response.status_code == 200
+    assert response.json()[0]["current_temperature"] == 22.0

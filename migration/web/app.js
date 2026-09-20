@@ -1,4 +1,4 @@
-const state = { home: null, rooms: [], view: "home" };
+const state = { home: null, rooms: [], view: "home", chartSeries: { current_temperature: true, target_temperature: true, humidity: false, valve_position: false } };
 
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -45,15 +45,18 @@ function heatPumpCard(heatPump) {
   return `<section class="section"><h2>Wärmepumpe</h2><div class="card"><div class="room-name">${esc(heatPump.model)}</div><div class="room-values"><span class="room-value">Vorlauf ${heatPump.floor_supply_celsius ?? "n/a"} °C</span><span class="room-value">Puffer ${heatPump.buffer_celsius ?? "n/a"} °C</span><span class="room-value">Erzeugt heute ${heatPump.produced_energy_today_kwh.toFixed(1)} kWh</span></div><div class="room-detail">Modus ${esc(heatPump.operating_mode ?? "n/a")} · Verdichter ${heatPump.compressor_active ? "aktiv" : "bereit"}</div></div></section>`;
 }
 
-function chart(points) {
+function chart(points, selectedSeries = state.chartSeries) {
   if (!points.length) return '<p class="empty">Keine Historie für diesen Zeitraum verfügbar.</p>';
   const width = 760; const height = 250; const pad = 28;
-  const values = points.flatMap((point) => [point.current_temperature, point.target_temperature]);
-  const min = Math.floor(Math.min(...values) - 1); const max = Math.ceil(Math.max(...values) + 1);
+  const temperatureValues = points.flatMap((point) => [point.current_temperature, point.target_temperature].filter((_, index) => index === 0 ? selectedSeries.current_temperature : selectedSeries.target_temperature));
+  const percentValues = points.flatMap((point) => [point.humidity, point.valve_position].filter((_, index) => index === 0 ? selectedSeries.humidity : selectedSeries.valve_position));
+  const min = Math.floor(Math.min(...temperatureValues, 10) - 1); const max = Math.ceil(Math.max(...temperatureValues, 30) + 1);
   const x = (index) => pad + index * (width - pad * 2) / Math.max(1, points.length - 1);
   const y = (value) => height - pad - (value - min) * (height - pad * 2) / Math.max(1, max - min);
-  const line = (key, color, dash = "") => `<polyline fill="none" stroke="${color}" stroke-width="3" ${dash ? `stroke-dasharray="${dash}"` : ""} points="${points.map((point, index) => `${x(index)},${y(point[key])}`).join(" ")}"/>`;
-  return `<div class="chart-wrap"><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Temperaturverlauf"><line x1="${pad}" y1="${height-pad}" x2="${width-pad}" y2="${height-pad}" stroke="#bcccdc"/><line x1="${pad}" y1="${pad}" x2="${pad}" y2="${height-pad}" stroke="#bcccdc"/>${line("current_temperature", "#c2410c")}${line("target_temperature", "#64748b", "7 5")}<text x="${pad}" y="18" fill="#627d98" font-size="12">${max} °C</text><text x="${pad}" y="${height-4}" fill="#627d98" font-size="12">${min} °C</text></svg><div class="chart-legend"><span class="actual">Ist</span><span class="target">Ziel</span></div></div>`;
+  const line = (key, color, dash = "", scale = y) => selectedSeries[key] ? `<polyline fill="none" stroke="${color}" stroke-width="3" ${dash ? `stroke-dasharray="${dash}"` : ""} points="${points.map((point, index) => `${x(index)},${scale(point[key])}`).join(" ")}"/>` : "";
+  const percentScale = (value) => height - pad - value * (height - pad * 2) / 100;
+  const legend = [selectedSeries.current_temperature ? '<span class="actual">Ist</span>' : "", selectedSeries.target_temperature ? '<span class="target">Ziel</span>' : "", selectedSeries.humidity ? '<span style="color:#7c3aed">Feuchte</span>' : "", selectedSeries.valve_position ? '<span style="color:#e03131">Ventil</span>' : ""].join("");
+  return `<div class="chart-wrap"><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Raumverlauf"><line x1="${pad}" y1="${height-pad}" x2="${width-pad}" y2="${height-pad}" stroke="#bcccdc"/><line x1="${pad}" y1="${pad}" x2="${pad}" y2="${height-pad}" stroke="#bcccdc"/>${line("current_temperature", "#c2410c")}${line("target_temperature", "#64748b", "7 5")}${line("humidity", "#7c3aed", "", percentScale)}${line("valve_position", "#e03131", "2 2", percentScale)}<text x="${pad}" y="18" fill="#627d98" font-size="12">${max} °C / 100 %</text><text x="${pad}" y="${height-4}" fill="#627d98" font-size="12">${min} °C / 0 %</text></svg><div class="chart-legend">${legend}</div></div>`;
 }
 
 async function renderRoom(roomName) {
@@ -102,7 +105,8 @@ async function renderCharts() {
   document.querySelector("#metrics").innerHTML = [metric("Diagramme", state.rooms.length, "alle Räume"), metric("Zeitraum", "24 h", "gemeinsame Auswahl"), metric("Messreihen", "Ist · Ziel", "Temperatur"), metric("Datenzugriff", "read-only", "keine Provider-Abfragen")].join("");
   const histories = await Promise.all(state.rooms.map(async (room) => ({ room, points: await getJson(`/api/v1/rooms/${encodeURIComponent(room.room_name)}/history?hours=24`) })));
   if (state.view !== "charts") return;
-  document.querySelector("#content").innerHTML = `<section class="section"><h2>Raumverläufe · letzte 24 Stunden</h2><div class="chart-grid">${histories.map(({room, points}) => `<article class="card"><h2>${esc(room.room_name)}</h2>${chart(points)}</article>`).join("")}</div></section>`;
+  const controls = Object.entries({ current_temperature: "Ist", target_temperature: "Ziel", humidity: "Feuchtigkeit", valve_position: "Ventil" }).map(([key, label]) => `<button class="${state.chartSeries[key] ? "active" : ""}" data-series="${key}">${label}</button>`).join("");
+  document.querySelector("#content").innerHTML = `<section class="section"><h2>Raumverläufe · letzte 24 Stunden</h2><div class="series-controls" aria-label="Messreihen">${controls}</div><div class="chart-grid">${histories.map(({room, points}) => `<article class="card"><h2>${esc(room.room_name)}</h2>${chart(points)}</article>`).join("")}</div></section>`;
 }
 
 async function renderWeather() {
@@ -122,7 +126,9 @@ async function renderHeatPump() {
   if (!report) { document.querySelector("#metrics").innerHTML = ""; document.querySelector("#content").innerHTML = '<div class="card empty">Keine Wärmepumpendaten verfügbar.</div>'; return; }
   const metrics = report.metrics;
   document.querySelector("#metrics").innerHTML = [metric("Vorlauf", `${metrics.floor_supply_celsius ?? "n/a"} °C`, "Fußbodenheizung"), metric("Puffer", `${metrics.buffer_celsius ?? "n/a"} °C`, "Sensorwert"), metric("Erzeugt heute", `${metrics.produced_energy_today_kwh.toFixed(1)} kWh`, report.model), metric("SPF gesamt", metrics.spf_total ?? "n/a", "aktuell"), metric("Verdichterstarts", metrics.starts_24h ?? "n/a", "letzte 24 Stunden"), metric("Ø Zyklus", metrics.average_cycle_minutes == null ? "n/a" : `${metrics.average_cycle_minutes.toFixed(1)} min`, "je Start"), metric("Energie zugeführt", `${metrics.supplied_energy_today_kwh.toFixed(1)} kWh`, "heute"), metric("Wärmeleistung", `${metrics.current_heat_kw ?? "n/a"} kW`, "aktuell")].join("");
-  document.querySelector("#content").innerHTML = `<section class="section"><h2>Wärmepumpenstatus</h2><div class="card"><div class="room-name">${esc(report.model)} · ${report.online ? "Online" : "Offline"}</div><div class="room-detail">Betriebsmodus ${esc(metrics.operating_mode)} · Verdichter ${metrics.compressor_active ? "aktiv" : "bereit"}</div></div></section><section class="section"><h2>Anlagenbild</h2><div class="card schema-card">${heatPumpSchema(report, "anlage")}</div></section><section class="section"><h2>Viessmann-Komponentenbild</h2><div class="card schema-card">${heatPumpSchema(report, "komponenten")}</div></section>`;
+  const featureRows = report.features.map((feature) => `<tr><td>${esc(feature.feature)}</td><td>${esc(feature.property)}</td><td>${esc(feature.value)}</td><td>${esc(feature.unit)}</td></tr>`).join("");
+  const curve = `<svg viewBox="0 0 760 220" role="img" aria-label="Heizkurve"><line x1="55" y1="185" x2="710" y2="185" stroke="#bcccdc"/><line x1="55" y1="25" x2="55" y2="185" stroke="#bcccdc"/><polyline points="55,45 180,70 305,95 430,120 555,150 710,175" fill="none" stroke="#c2410c" stroke-width="4"/><text x="65" y="25" fill="#627d98">Vorlauf °C</text><text x="610" y="210" fill="#627d98">Außentemperatur</text><text x="65" y="178" fill="#627d98">${esc(metrics.curve_shift ?? "n/a")}</text><text x="65" y="42" fill="#627d98">Steigung ${esc(metrics.curve_slope ?? "n/a")}</text></svg>`;
+  document.querySelector("#content").innerHTML = `<section class="section"><h2>Wärmepumpenstatus</h2><div class="card"><div class="room-name">${esc(report.model)} · ${report.online ? "Online" : "Offline"}</div><div class="room-detail">Betriebsmodus ${esc(metrics.operating_mode)} · Verdichter ${metrics.compressor_active ? "aktiv" : "bereit"}</div></div></section><section class="section"><h2>Anlagenbild</h2><div class="card schema-card">${heatPumpSchema(report, "anlage")}</div></section><section class="section"><h2>Viessmann-Komponentenbild</h2><div class="card schema-card">${heatPumpSchema(report, "komponenten")}</div></section><section class="section"><h2>Aktuelle Heizkurve</h2><div class="card schema-card">${curve}</div></section><section class="section"><details class="card"><summary>Technische Rohdaten · ${report.features.length} Werte</summary><div class="feature-table"><table><thead><tr><th>Feature</th><th>Property</th><th>Wert</th><th>Einheit</th></tr></thead><tbody>${featureRows}</tbody></table></div></details></section>`;
 }
 
 function heatPumpSchema(report, variant) {
@@ -142,6 +148,7 @@ async function render() {
     else renderHome();
     document.querySelectorAll("[data-room]").forEach((button) => button.addEventListener("click", () => { state.selectedRoom = button.dataset.room; state.view = "room"; render(); }));
     document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
+    document.querySelectorAll("[data-series]").forEach((button) => button.addEventListener("click", () => { state.chartSeries[button.dataset.series] = !state.chartSeries[button.dataset.series]; renderCharts(); }));
   } catch (error) {
     document.querySelector("#content").innerHTML = `<div class="card error">Migration API nicht erreichbar: ${esc(error.message)}</div>`;
   }

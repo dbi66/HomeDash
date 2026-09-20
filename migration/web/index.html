@@ -47,6 +47,12 @@
     .forecast-day { min-width:0; }
     .schema-card { overflow-x:auto; }
     .schema-card svg { display:block; min-width:720px; width:100%; }
+    .series-controls { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:10px; }
+    .series-controls button { background:#fff; border:1px solid var(--line); border-radius:8px; color:var(--ink); cursor:pointer; font:inherit; font-size:.75rem; font-weight:750; padding:8px 10px; }
+    .series-controls button.active { background:#102a43; border-color:#102a43; color:#fff; }
+    .feature-table { max-height:420px; overflow:auto; }
+    .feature-table table { border-collapse:collapse; width:100%; }
+    .feature-table th, .feature-table td { border-bottom:1px solid var(--line); padding:7px; text-align:left; }
     .actual::before { color:#c2410c; content:"━ "; font-weight:900; }
     .target::before { color:#64748b; content:"┄ "; font-weight:900; }
     .error { border-color:#fecaca; color:#991b1b; }
@@ -72,6 +78,6 @@
     <section class="grid" id="metrics"></section>
     <div id="content"><p class="empty">Daten werden geladen ...</p></div>
   </main>
-  <script src="/app.js?v=0.10.4"></script>
+  <script src="/app.js?v=0.10.5"></script>
 </body>
 </html>

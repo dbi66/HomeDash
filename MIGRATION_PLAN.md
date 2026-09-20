@@ -138,7 +138,7 @@ Vergleich und Dev-Erweiterung 2026-09-20:
 - Raumbericht erweitert: bestehende Tabelle bleibt erhalten und wird durch Temperatur- und Feuchte-Spidercharts ergänzt.
 - Wärmepumpenansicht erweitert: beide Schemata und 30 KPI-/Featurewerte aus dem gemeinsamen Produktionsberechnungspfad ergänzt.
 - Der Dev-Launcher weist Collector auf Nicht-Produktionsports ab und verhindert per `flock` einen zweiten Collector-Satz.
-- Die Dev-Diagramme bieten zunächst Ist-/Zieltemperatur; Feuchte- und Ventilreihen in den Zeitdiagrammen sowie der vollständige Rohdaten-Explorer bleiben der nächsten UI-Ausbaustufe vorbehalten.
+- Die Dev-Zeitdiagramme bieten gemeinsame Schalter für Ist, Ziel, Feuchte und Ventil; der Wärmepumpenbericht enthält zusätzlich Heizkurve und technischen Rohdaten-Explorer.
 - Der produktive Streamlit-Fallback bleibt bis zur Abnahme der erweiterten Messreihenauswahl aktiv.
 
 Reihenfolge der Views:

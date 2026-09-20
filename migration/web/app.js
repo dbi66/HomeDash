@@ -1,6 +1,7 @@
 const state = { home: null, rooms: [], view: "home", chartSeries: { current_temperature: true, target_temperature: true, humidity: true, valve_position: true } };
 const isProduction = window.location.port === "8501";
 const appLabel = isProduction ? "Produktiv" : "Migrationstest";
+document.title = isProduction ? "HomeClimate Dashboard" : "HomeClimate Migration";
 
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"

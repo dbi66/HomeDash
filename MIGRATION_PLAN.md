@@ -130,11 +130,22 @@ Mobile Anforderungen:
 
 ### Phase 5: Parallelbetrieb
 
-- neues Frontend zunächst unter einem separaten lokalen Port starten
+- produktive Streamlit-App auf `8501` unverändert aktiv halten
+- neuen Migrationstestserver ausschließlich auf `8503` starten
+- `8503` zunächst als reine Test-UI ohne Homematic-/Viessmann-Collector betreiben
+- bis zur Abnahme darf nur `8501` Provider abfragen und die operative Datenbank aktualisieren
 - FastAPI und SvelteKit über einen lokalen Reverse Proxy bündeln
-- Streamlit bleibt über Port `8501` als Fallback verfügbar
-- Homematic- und Viessmann-Collector werden nur einmal betrieben
+- Streamlit bleibt über Port `8501` als produktiver Fallback verfügbar
+- Homematic- und Viessmann-Collector werden genau einmal betrieben
 - Vergleichstests zwischen Streamlit- und neuer UI durchführen
+
+Start des aktuellen Testmodus ohne doppelte Datenabfragen:
+
+```bash
+HOMEDASH_PORT=8503 HOMEDASH_RUN_COLLECTORS=0 sh scripts/run_dashboard.sh
+```
+
+Der Testserver darf die Produktionsdaten read-only lesen, aber keine Provider aufrufen und keine Collector-Prozesse starten. Vor dem Umschalten müssen API und neue UI ihre Daten ebenfalls über den produktiven Datenpfad beziehen.
 
 Abnahmekriterien:
 
@@ -161,6 +172,12 @@ systemd homedash-collector.service -> Homematic und Viessmann Jobs
 systemd homedash-web.service       -> SvelteKit oder statische Auslieferung
 Tailscale Serve                    -> lokaler Web-Port
 ```
+
+Betriebsports:
+
+- `8501`: produktive Streamlit-App, einzige aktive Datenabfrage und Datenbankaktualisierung
+- `8503`: Migrationstestserver, read-only, keine Collector und keine Provider-Abfragen
+- `8502`: frei für temporäre lokale Diagnose, nicht für den regulären Migrationstest
 
 Der öffentliche Router bleibt ohne Portfreigabe. Tailscale ist der einzige externe Zugang.
 

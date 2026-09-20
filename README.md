@@ -138,6 +138,7 @@ Alle Variablen sind optional:
 | `HOMEDASH_PORT` | `8501` | HTTP-Port |
 | `HOMEDASH_COLLECTOR_INTERVAL` | `900` | Homematic-Abfrage in Sekunden |
 | `HOMEDASH_VIESSMANN_INTERVAL` | `1800` | Viessmann-Abfrage in Sekunden |
+| `HOMEDASH_RUN_COLLECTORS` | `1` | Collector-Prozesse aktivieren; für reine Test-UI auf `0` setzen |
 | `HOMEDASH_ELECTRICITY_PRICE` | `0.30` | Preis in EUR/kWh für Kostenkennzahlen |
 | `HOMEDASH_CONFIG` | `config.ini` | Pfad zur Homematic-Konfiguration |
 | `VIESSMANN_TOKEN_FILE` | keine | Lokaler PyViCare-Token |
@@ -147,6 +148,14 @@ Beispiel für einen alternativen Port:
 ```bash
 HOMEDASH_PORT=8502 sh scripts/run_dashboard.sh
 ```
+
+Für die Migration ist `8503` als Testport reserviert. Bis der neue Stack eigene Collector besitzt, bleibt ausschließlich der produktive Dienst auf `8501` datenaktiv. Eine reine Test-UI darf keine Homematic- oder Viessmann-Abfragen starten:
+
+```bash
+HOMEDASH_PORT=8503 HOMEDASH_RUN_COLLECTORS=0 sh scripts/run_dashboard.sh
+```
+
+Der produktive Dienst auf `8501` bleibt dabei unverändert aktiv und ist der einzige Prozess, der Provider abfragt und die operative Datenbank aktualisiert. Niemals beide Ports mit aktivierten Collectors starten.
 
 ## Daten und Collector
 

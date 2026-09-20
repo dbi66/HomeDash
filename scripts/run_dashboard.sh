@@ -7,6 +7,7 @@ BIND_ADDRESS="${HOMEDASH_BIND:-0.0.0.0}"
 PORT="${HOMEDASH_PORT:-8501}"
 COLLECTOR_INTERVAL="${HOMEDASH_COLLECTOR_INTERVAL:-900}"
 VIESSMANN_COLLECTOR_INTERVAL="${HOMEDASH_VIESSMANN_INTERVAL:-1800}"
+RUN_COLLECTORS="${HOMEDASH_RUN_COLLECTORS:-1}"
 
 cd "$PROJECT_ROOT"
 
@@ -23,11 +24,13 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
-"$PYTHON_BIN" scripts/collect_snapshot.py --interval "$COLLECTOR_INTERVAL" &
-COLLECTOR_PID=$!
+if [ "$RUN_COLLECTORS" = "1" ]; then
+    "$PYTHON_BIN" scripts/collect_snapshot.py --interval "$COLLECTOR_INTERVAL" &
+    COLLECTOR_PID=$!
 
-"$PYTHON_BIN" scripts/collect_viessmann.py --interval "$VIESSMANN_COLLECTOR_INTERVAL" &
-VIESSMANN_COLLECTOR_PID=$!
+    "$PYTHON_BIN" scripts/collect_viessmann.py --interval "$VIESSMANN_COLLECTOR_INTERVAL" &
+    VIESSMANN_COLLECTOR_PID=$!
+fi
 
 "$PYTHON_BIN" -m streamlit run app.py \
     --server.address "$BIND_ADDRESS" \

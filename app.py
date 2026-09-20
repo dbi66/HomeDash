@@ -12,6 +12,7 @@ from src.display import format_data_age, format_timestamp
 from src.hmip_provider import HomematicProviderError, load_home, get_room_readings as get_hmip_readings
 from src.home_dashboard import render_home_dashboard as render_home_dashboard_page
 from src.heat_pump_page import render_heat_pump_page
+from src.heat_pump_inventory_view import render_viessmann_inventory
 from src.mock_provider import get_room_readings
 from src.monitoring import HeatPumpMetrics, SystemAlert, build_heat_pump_metrics, build_system_alerts
 from src.navigation import PAGES, apply_navigation
@@ -616,30 +617,6 @@ def render_device_hierarchy(home: object) -> None:
         f'<div class="device-tree__branch">{"".join(nodes)}</div></div>'
     )
     st.markdown(tree, unsafe_allow_html=True)
-
-
-def render_viessmann_inventory(inventory: list[dict[str, object]]) -> None:
-    st.caption(f"{len(inventory)} Viessmann device(s)")
-    for device in inventory:
-        features = device.get("features", {})
-        feature_rows = features.get("data", []) if isinstance(features, dict) else []
-        with st.expander(f"{device['model']} | {device['id']} | {'online' if device['online'] else 'offline'}"):
-            if not feature_rows:
-                st.json(features)
-                continue
-            rows = []
-            for feature in feature_rows:
-                if isinstance(feature, dict):
-                    rows.append(
-                        {
-                            "feature": feature.get("feature", ""),
-                            "properties": ", ".join(sorted(feature.get("properties", {}).keys())),
-                        }
-                    )
-            if rows:
-                st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
-            else:
-                st.json(features)
 
 
 def render_viessmann_heat_pumps(heat_pumps: list[object]) -> None:

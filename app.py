@@ -14,6 +14,7 @@ from src.home_dashboard import render_home_dashboard as render_home_dashboard_pa
 from src.heat_pump_page import render_heat_pump_page
 from src.mock_provider import get_room_readings
 from src.monitoring import HeatPumpMetrics, SystemAlert, build_heat_pump_metrics, build_system_alerts
+from src.navigation import PAGES, apply_navigation
 from src.room_layout import BASE_LEVEL, UNASSIGNED, UPSTAIRS, group_readings_by_level
 from src.viessmann_heatpump import feature_values, heat_pump_snapshots_from_inventory, read_heat_pumps, report_sections, system_map
 from src.viessmann_provider import ViessmannProviderError, load_client, read_inventory
@@ -1499,7 +1500,7 @@ with header_actions[2]:
 
     function_choice = st.selectbox(
         "Navigation",
-        options=("Home", "Raumdetail", "Raumbericht", "Alle Diagramme", "Wärmepumpe", "Wetter", "Einstellungen"),
+        options=PAGES,
         key="function-navigation",
         label_visibility="collapsed",
     )
@@ -1531,41 +1532,7 @@ st.markdown(
 previous_choice = st.session_state.get("navigation-last")
 st.session_state["navigation-last"] = function_choice
 
-if function_choice == "Home":
-    st.session_state["show_all_graphs"] = False
-    st.session_state["show_settings"] = False
-    st.session_state["view"] = "overview"
-    st.query_params.clear()
-elif function_choice == "Raumdetail":
-    st.session_state["show_all_graphs"] = False
-    st.session_state["show_settings"] = False
-    st.session_state["view"] = "detail"
-    room_name = st.session_state.get("selected_room", "")
-    st.query_params.clear()
-    st.query_params["room"] = room_name
-    st.query_params["view"] = "detail"
-elif function_choice == "Alle Diagramme":
-    st.session_state["show_all_graphs"] = True
-    st.session_state["show_settings"] = False
-    st.session_state["view"] = "overview"
-elif function_choice == "Raumbericht":
-    st.session_state["show_all_graphs"] = False
-    st.session_state["show_settings"] = False
-    st.session_state["view"] = "report"
-    st.query_params.clear()
-    st.query_params["view"] = "report"
-elif function_choice == "Wärmepumpe":
-    st.session_state["show_all_graphs"] = False
-    st.session_state["show_settings"] = False
-    st.session_state["view"] = "heat-pump-report"
-elif function_choice == "Wetter":
-    st.session_state["show_all_graphs"] = False
-    st.session_state["show_settings"] = False
-    st.session_state["view"] = "weather-report"
-else:
-    st.session_state["show_all_graphs"] = False
-    st.session_state["show_settings"] = True
-    st.session_state["view"] = "overview"
+apply_navigation(function_choice, st.session_state, st.query_params)
 
 @st.dialog("Einstellungen")
 def settings_dialog() -> None:

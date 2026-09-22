@@ -33,6 +33,7 @@
     nav { display:flex; flex-wrap:wrap; gap:7px; margin:0 0 16px; }
     nav button, .back-button { background:#fff; border:1px solid var(--line); border-radius:8px; color:var(--ink); cursor:pointer; font:inherit; font-size:.78rem; font-weight:750; padding:9px 12px; }
     nav button.active, nav button:hover, .back-button:hover { background:#102a43; border-color:#102a43; color:#fff; }
+    .nav-status { align-items:center; background:#e6ffed; border:1px solid #b7ebc6; border-radius:8px; color:#176b35; display:inline-flex; font-size:.72rem; font-weight:800; margin-left:auto; padding:8px 11px; }
     .room-card { cursor:pointer; text-align:left; width:100%; }
     .room-card:hover { border-color:#9fb3c8; box-shadow:0 3px 12px rgba(16,42,67,.08); }
     .chart-wrap { overflow-x:auto; }
@@ -45,8 +46,25 @@
     .report-table th { color:var(--muted); font-size:.72rem; text-transform:uppercase; }
     .chart-grid { display:grid; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr)); }
     .chart-grid .card { overflow:hidden; }
-    .forecast-grid { display:grid; gap:10px; grid-template-columns:repeat(4,minmax(0,1fr)); }
-    .forecast-day { min-width:0; }
+    .forecast-grid { display:grid; gap:10px; grid-template-columns:repeat(7,minmax(132px,1fr)); overflow-x:auto; padding-bottom:4px; }
+    .forecast-day { min-width:132px; }
+    .forecast-day-today { border-color:#c2410c; box-shadow:inset 0 3px 0 #c2410c; }
+    .forecast-day__head { align-items:center; display:flex; justify-content:space-between; gap:8px; }
+    .forecast-day__icon { font-size:1.7rem; line-height:1; }
+    .forecast-day__condition { color:var(--muted); font-size:.72rem; min-height:2.2em; margin-top:8px; }
+    .forecast-day__temps { align-items:baseline; display:flex; gap:8px; margin-top:11px; }
+    .forecast-day__temps strong { color:#c2410c; font-size:1.25rem; }
+    .forecast-day__temps span { color:var(--muted); font-size:.85rem; }
+    .forecast-range { background:#e6edf3; border-radius:99px; height:6px; margin:8px 0 10px; position:relative; }
+    .forecast-range span { background:linear-gradient(90deg,#5b8fb9,#c2410c); border-radius:99px; height:100%; position:absolute; }
+    .forecast-chart-wrap { overflow-x:auto; }
+    .forecast-chart-wrap svg { display:block; min-width:680px; width:100%; }
+    .forecast-chart-legend { color:var(--muted); display:flex; flex-wrap:wrap; font-size:.72rem; gap:16px; margin:3px 0 0 44px; }
+    .forecast-chart-legend span::before { content:"● "; font-weight:900; }
+    .forecast-chart-legend__temp::before { color:#c2410c !important; }
+    .forecast-chart-legend__apparent::before { color:#64748b !important; }
+    .forecast-chart-legend__wind::before { color:#2f855a !important; }
+    .forecast-chart-legend__rain::before { color:#8fc6e8 !important; }
     .schema-card { overflow-x:auto; }
     .schema-card svg { display:block; min-width:720px; width:100%; }
     .series-controls { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:10px; }
@@ -64,7 +82,7 @@
       .status { font-size:.68rem; }
       .grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .rooms { grid-template-columns:1fr; }
-      .chart-grid, .forecast-grid { grid-template-columns:1fr; }
+      .chart-grid { grid-template-columns:1fr; }
       .card { padding:11px; }
     }
   </style>
@@ -75,11 +93,11 @@
       <div><div class="eyebrow" id="app-version">HomeClimate · Migration</div><h1>HomeClimate Dashboard</h1></div>
       <div class="status" id="app-status">API</div>
     </header>
-    <nav aria-label="Migration views"><button class="active" data-view="home">Home</button><button data-view="rooms">Alle Räume</button><button data-view="room-report">Raumbericht</button><button data-view="charts">Alle Diagramme</button><button data-view="heat-pump">Wärmepumpe</button><button data-view="weather">Wetter</button></nav>
+    <nav aria-label="Migration views"><button class="active" data-view="home">Home</button><button data-view="rooms">Alle Räume</button><button data-view="room-report">Raumbericht</button><button data-view="charts">Alle Diagramme</button><button data-view="heat-pump">Wärmepumpe</button><button data-view="weather">Wetter</button><span class="nav-status" id="operating-status">Betriebsstand wird geladen ...</span></nav>
     <section class="hero"><div class="eyebrow" style="color:#bcccdc">Neue Oberfläche</div><h2 id="page-title" style="font-size:1.35rem;margin:0">Dein Zuhause auf einen Blick</h2><p class="meta" id="freshness">Daten werden geladen ...</p></section>
     <section class="grid" id="metrics"></section>
     <div id="content"><p class="empty">Daten werden geladen ...</p></div>
   </main>
-  <script src="/app.js?v=0.10.17"></script>
+  <script src="/app.js?v=0.10.19"></script>
 </body>
 </html>

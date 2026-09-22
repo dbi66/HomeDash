@@ -9,8 +9,11 @@ HomeDash beobachtet eine Homematic-IP-Heizung und eine Viessmann-Wärmepumpe. Di
 - Raumübersicht nach Etage mit Temperatur, Luftfeuchte, Zieltemperatur, Ventilstellung und Trends
 - Raumdetail mit Historie, Diagrammen und Ereignissen
 - Raumbericht und Diagramme für alle Räume
-- Wettervorhersage für Aystetten (Open-Meteo)
+- Wetterbericht für Aystetten (Open-Meteo) mit aktuellen Bedingungen, stündlichem Temperaturverlauf für heute und 7-Tage-Prognose
+- Optionaler Viessmann-Außentemperatursensor direkt im Wetterbericht
 - Viessmann-Inventory, Wärmepumpenbericht, Systemübersicht und Energiekennzahlen
+- Warmwasserspeicher-Temperatur als KPI im Home- und Wärmepumpen-Dashboard
+- Kompakter Betriebsstand-Indikator in der oberen Navigation
 - Systemstatus für veraltete Daten, Heizprobleme und fehlende Verbrauchswerte
 - Mock-Modus für Entwicklung ohne Homematic-Hardware
 - Responsive Darstellung für Desktop und mobile Browser
@@ -166,7 +169,7 @@ Der erste Migrations-API-Slice läuft auf `8503`:
 .venv/bin/uvicorn migration.api:app --host 0.0.0.0 --port 8503
 ```
 
-Verfügbare Endpunkte sind `/health/live`, `/health/ready`, `/api/v1/home`, `/api/v1/status`, `/api/v1/rooms`, Raumhistorien, `/api/v1/heat-pump`, `/api/v1/heat-pump/report` und `/api/v1/weather`. Die API öffnet SQLite ausschließlich read-only.
+Verfügbare Endpunkte sind `/health/live`, `/health/ready`, `/api/v1/home`, `/api/v1/status`, `/api/v1/rooms`, Raumhistorien, `/api/v1/heat-pump`, `/api/v1/heat-pump/report` und `/api/v1/weather`. Der Wetter-Endpunkt liefert aktuelle Bedingungen, stündliche Werte für den 7-Tage-Zeitraum, Tagesprognosen sowie den optionalen Viessmann-Außensensor. Die API öffnet SQLite ausschließlich read-only.
 
 ## Daten und Collector
 

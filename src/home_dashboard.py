@@ -35,6 +35,7 @@ def render_monitoring_summary(readings: list[dict[str, object]], database_path: 
     metric_values = (
         ("Energie heute", f"{metrics.produced_energy_today_kwh:.1f} kWh", "erzeugt"),
         ("Stromkosten heute", f"{metrics.daily_energy_cost:.2f} €" if metrics.daily_energy_cost is not None else "n/a", "bei konfiguriertem Strompreis"),
+        ("Warmwasserspeicher", f"{metrics.dhw_celsius:.1f} °C" if metrics.dhw_celsius is not None else "n/a", "Viessmann-Sensor"),
         ("Verdichterstarts", f"{metrics.starts_24h:.0f}" if metrics.starts_24h is not None else "n/a", "letzte 24h"),
         ("Ø Zyklusdauer", f"{metrics.average_cycle_minutes:.1f} min" if metrics.average_cycle_minutes is not None else "n/a", "je Verdichterstart"),
     )

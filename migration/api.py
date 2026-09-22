@@ -159,6 +159,7 @@ def _latest_heat_pump(connection: sqlite3.Connection) -> dict[str, Any] | None:
         "floor_supply_celsius": _feature_value(features, "heating.circuits.0.sensors.temperature.supply", "value"),
         "buffer_celsius": _feature_value(features, "heating.bufferCylinder.sensors.temperature.main", "value"),
         "dhw_celsius": _feature_value(features, "heating.dhw.sensors.temperature.dhwCylinder", "value"),
+        "outside_celsius": _feature_value(features, "heating.sensors.temperature.outside", "value"),
         "produced_energy_today_kwh": sum(
             float(_feature_value(features, feature, "currentDay") or 0)
             for feature in (
@@ -323,7 +324,18 @@ def weather() -> dict[str, Any]:
     from src.weather import LOCATION_NAME, fetch_forecast
 
     forecast = fetch_forecast()
-    return {"location": LOCATION_NAME, "daily": forecast["daily"]}
+    try:
+        with _connect_read_only() as connection:
+            heat_pump = _latest_heat_pump(connection)
+    except (FileNotFoundError, sqlite3.Error):
+        heat_pump = None
+    return {
+        "location": LOCATION_NAME,
+        "current": forecast.get("current", {}),
+        "hourly": forecast.get("hourly", {}),
+        "daily": forecast["daily"],
+        "viessmann_outside_celsius": heat_pump.get("outside_celsius") if heat_pump else None,
+    }
 
 
 @app.get("/api/v1/rooms/{room_name}/history", response_model=list[HistoryPointResponse])

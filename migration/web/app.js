@@ -34,6 +34,7 @@ function renderHeader() {
     const formatted = date.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
     return `${formatted} (vor ${minutes} Min.)`;
   };
+  document.querySelector("#operating-status").textContent = `${isProduction ? "Betriebsstand · Produktiv" : "Teststand · Migration"} · Port ${window.location.port || "80"}`;
   document.querySelector("#freshness").textContent = `Homematic: ${formatFreshness(state.home.latest_homematic)} · Viessmann: ${formatFreshness(state.home.latest_viessmann)}`;
 }
 
@@ -43,8 +44,8 @@ function renderHome() {
   document.querySelector("#metrics").innerHTML = [
     metric("Räume", data.room_count, `${data.open_valves} Ventile geöffnet`),
     metric("Ø Raumtemperatur", data.average_temperature == null ? "n/a" : `${data.average_temperature.toFixed(1)} °C`, "aktueller Bestand"),
-    metric("Datenzugriff", "read-only", "keine Provider-Abfragen"),
-    metric(isProduction ? "Betriebsstand" : "Teststand", isProduction ? "Produktiv" : "Migration", `API auf Port ${window.location.port || "80"}`)
+    metric("Warmwasserspeicher", data.heat_pump?.dhw_celsius == null ? "n/a" : `${data.heat_pump.dhw_celsius} °C`, "Viessmann-Sensor"),
+    metric("Datenzugriff", "read-only", "keine Provider-Abfragen")
   ].join("");
   document.querySelector("#content").innerHTML = `<section class="section"><h2>Raumstatus</h2><div class="rooms">${state.rooms.map(roomCard).join("")}</div></section>${heatPumpCard(data.heat_pump)}`;
 }
@@ -139,11 +140,51 @@ async function renderCharts() {
 async function renderWeather() {
   const weather = await getJson("/api/v1/weather");
   if (state.view !== "weather") return;
+  const current = weather.current || {};
+  const currentCondition = weatherLabel(current.weather_code);
   const daily = weather.daily;
   document.querySelector("#page-title").textContent = "Wetterbericht";
-  document.querySelector("#metrics").innerHTML = [metric("Ort", weather.location, "Open-Meteo"), metric("Tage", daily.time.length, "Vorhersage"), metric("Heute", `${daily.temperature_2m_max[0]} / ${daily.temperature_2m_min[0]} °C`, "Maximum / Minimum"), metric("Regen", `${daily.precipitation_sum[0]} mm`, "heute")].join("");
-  const days = daily.time.map((date, index) => `<article class="card forecast-day"><div class="room-name">${esc(index === 0 ? "Heute" : date)}</div><div class="metric-value">${esc(daily.temperature_2m_max[index])} / ${esc(daily.temperature_2m_min[index])} °C</div><div class="metric-detail">Regen ${esc(daily.precipitation_sum[index])} mm · Wind ${esc(daily.wind_speed_10m_max[index])} km/h</div></article>`).join("");
-  document.querySelector("#content").innerHTML = `<section class="section"><h2>7-Tage-Wetterbericht · ${esc(weather.location)}</h2><div class="forecast-grid">${days}</div></section>`;
+  document.querySelector("#metrics").innerHTML = [metric("Aktuell", `${current.temperature_2m ?? "n/a"} °C`, currentCondition), metric("Bedingung", currentCondition, `Feuchte ${current.relative_humidity_2m ?? "n/a"} % · Wind ${current.wind_speed_10m ?? "n/a"} km/h`), metric("Viessmann außen", weather.viessmann_outside_celsius == null ? "n/a" : `${weather.viessmann_outside_celsius} °C`, "Wärmepumpensensor"), metric("Heute", `${daily.temperature_2m_max[0]} / ${daily.temperature_2m_min[0]} °C`, "Maximum / Minimum")].join("");
+  const minimum = Math.min(...daily.temperature_2m_min);
+  const maximum = Math.max(...daily.temperature_2m_max);
+  const temperatureSpan = Math.max(1, maximum - minimum);
+  const days = daily.time.map((date, index) => {
+    const dayLabel = index === 0 ? "Heute" : new Date(`${date}T12:00:00`).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
+    const low = Number(daily.temperature_2m_min[index]);
+    const high = Number(daily.temperature_2m_max[index]);
+    const left = (low - minimum) / temperatureSpan * 100;
+    const width = Math.max(5, (high - low) / temperatureSpan * 100);
+    const [icon, condition] = weatherIcon(daily.weather_code[index]);
+    return `<article class="card forecast-day${index === 0 ? " forecast-day-today" : ""}"><div class="forecast-day__head"><div class="room-name">${esc(dayLabel)}</div><span class="forecast-day__icon" aria-hidden="true">${icon}</span></div><div class="forecast-day__condition">${esc(condition)}</div><div class="forecast-day__temps"><strong>${esc(high)}°</strong><span>${esc(low)}°</span></div><div class="forecast-range" aria-label="${esc(low)} bis ${esc(high)} Grad Celsius"><span style="left:${left}%;width:${width}%"></span></div><div class="metric-detail">Regen ${esc(daily.precipitation_sum[index])} mm · Wind ${esc(daily.wind_speed_10m_max[index])} km/h</div></article>`;
+  }).join("");
+  const today = daily.time[0];
+  document.querySelector("#content").innerHTML = `<section class="section"><h2>Verlauf heute · ${esc(weather.location)}</h2><div class="card forecast-today-chart">${todayWeatherChart(weather.hourly, today)}</div></section><section class="section"><h2>Aktuelle Wetterlage · ${esc(weather.location)}</h2><div class="card"><div class="room-name">${esc(currentCondition)} · ${current.temperature_2m ?? "n/a"} °C</div><div class="room-detail">Feuchte ${current.relative_humidity_2m ?? "n/a"} % · Wind ${current.wind_speed_10m ?? "n/a"} km/h · Viessmann außen ${weather.viessmann_outside_celsius == null ? "n/a" : `${weather.viessmann_outside_celsius} °C`}</div></div></section><section class="section"><h2>7-Tage-Wetterbericht · ${esc(weather.location)}</h2><div class="forecast-grid">${days}</div></section>`;
+}
+
+function todayWeatherChart(hourly, today) {
+  const source = hourly || {};
+  const points = (source.time || []).map((time, index) => ({ time, temperature: Number(source.temperature_2m?.[index]), apparent: Number(source.apparent_temperature?.[index]), rain: Number(source.precipitation_probability?.[index] || 0), wind: Number(source.wind_speed_10m?.[index] || 0) })).filter((point) => point.time.startsWith(today) && Number.isFinite(point.temperature));
+  if (points.length < 2) return '<div class="empty">Kein stündlicher Verlauf verfügbar.</div>';
+  const width = 900; const height = 300; const left = 44; const right = 44; const top = 28; const bottom = 42;
+  const temperatures = points.flatMap((point) => [point.temperature, point.apparent]);
+  const minTemperature = Math.floor(Math.min(...temperatures) - 1); const maxTemperature = Math.ceil(Math.max(...temperatures) + 1);
+  const x = (index) => left + index * (width - left - right) / Math.max(1, points.length - 1);
+  const yTemperature = (value) => height - bottom - (value - minTemperature) * (height - top - bottom) / Math.max(1, maxTemperature - minTemperature);
+  const yPercent = (value) => height - bottom - value * (height - top - bottom) / 100;
+  const yWind = (value) => height - bottom - value * (height - top - bottom) / Math.max(1, Math.max(...points.map((point) => point.wind), 20));
+  const line = (key, color, scale, dash = "") => `<polyline fill="none" stroke="${color}" stroke-width="3" ${dash ? `stroke-dasharray="${dash}"` : ""} points="${points.map((point, index) => `${x(index).toFixed(1)},${scale(point[key]).toFixed(1)}`).join(" ")}"/>`;
+  const grid = [minTemperature, Math.round((minTemperature + maxTemperature) / 2), maxTemperature].map((value) => `<line x1="${left}" y1="${yTemperature(value)}" x2="${width - right}" y2="${yTemperature(value)}" stroke="#e6edf3"/><text x="${left - 7}" y="${yTemperature(value) + 4}" text-anchor="end" fill="#627d98" font-size="11">${value}°</text>`).join("");
+  const bars = points.map((point, index) => `<rect x="${x(index) - 5}" y="${yPercent(point.rain)}" width="10" height="${height - bottom - yPercent(point.rain)}" rx="3" fill="#8fc6e8" opacity=".55"/>`).join("");
+  const labels = points.map((point, index) => index % 3 === 0 ? `<text x="${x(index)}" y="${height - 16}" text-anchor="middle" fill="#627d98" font-size="10">${esc(point.time.slice(11, 16))}</text>` : "").join("");
+  return `<div class="forecast-chart-wrap"><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Stündlicher Wetterverlauf für heute"><g>${grid}${bars}<line x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}" stroke="#9fb3c8"/>${line("temperature", "#c2410c", yTemperature)}${line("apparent", "#64748b", yTemperature, "7 5")}${line("wind", "#2f855a", yWind, "3 4")}${labels}<text x="${left}" y="15" fill="#52606d" font-size="11" font-weight="700">Temperatur °C</text><text x="${width - right}" y="15" text-anchor="end" fill="#52606d" font-size="11" font-weight="700">Regenbalken = Wahrscheinlichkeit · Wind gestrichelt</text></g></svg><div class="forecast-chart-legend"><span class="forecast-chart-legend__temp">Ist-Temperatur</span><span class="forecast-chart-legend__apparent">Gefühlt</span><span class="forecast-chart-legend__wind">Wind km/h</span><span class="forecast-chart-legend__rain">Regen %</span></div></div>`;
+}
+
+function weatherLabel(code) {
+  return ({0: "Klar", 1: "Überwiegend klar", 2: "Teilweise bewölkt", 3: "Bedeckt", 45: "Nebel", 48: "Nebel mit Reif", 51: "Leichter Nieselregen", 53: "Nieselregen", 55: "Starker Nieselregen", 61: "Leichter Regen", 63: "Regen", 65: "Starker Regen", 71: "Leichter Schneefall", 73: "Schneefall", 75: "Starker Schneefall", 80: "Regenschauer", 81: "Starke Regenschauer", 82: "Sehr starke Regenschauer", 95: "Gewitter", 96: "Gewitter mit Hagel", 99: "Starkes Gewitter mit Hagel"})[code] || "Unbekannt";
+}
+
+function weatherIcon(code) {
+  return ({0: ["☀", "Klar"], 1: ["🌤", "Überwiegend klar"], 2: ["⛅", "Teilweise bewölkt"], 3: ["☁", "Bedeckt"], 45: ["≋", "Nebel"], 48: ["≋", "Nebel mit Reif"], 51: ["☂", "Leichter Nieselregen"], 53: ["☂", "Nieselregen"], 55: ["☂", "Starker Nieselregen"], 61: ["☂", "Leichter Regen"], 63: ["☂", "Regen"], 65: ["☂", "Starker Regen"], 71: ["❄", "Leichter Schneefall"], 73: ["❄", "Schneefall"], 75: ["❄", "Starker Schneefall"], 80: ["☔", "Regenschauer"], 81: ["☔", "Starke Regenschauer"], 82: ["☔", "Sehr starke Regenschauer"], 95: ["⚡", "Gewitter"], 96: ["⚡", "Gewitter mit Hagel"], 99: ["⚡", "Starkes Gewitter mit Hagel"]})[code] || ["·", "Unbekannt"];
 }
 
 async function renderHeatPump() {

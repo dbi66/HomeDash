@@ -153,3 +153,42 @@ def test_migration_api_returns_heat_pump_report(tmp_path, monkeypatch) -> None:
     assert response.json()["model"] == "E3_Vitocal_16"
     assert response.json()["metrics"]["dhw_celsius"] == 48.5
     assert "metrics" in response.json()
+
+
+def test_migration_api_weather_includes_current_conditions_and_viessmann_sensor(tmp_path, monkeypatch) -> None:
+    database_path = tmp_path / "migration.db"
+    initialize_database(database_path)
+    save_viessmann_snapshots(
+        database_path,
+        [
+            {
+                "id": "heat-pump-1",
+                "model": "E3_Vitocal_16",
+                "online": True,
+                "features": {
+                    "data": [
+                        {
+                            "feature": "heating.sensors.temperature.outside",
+                            "properties": {"value": {"value": 8.4}},
+                        }
+                    ]
+                },
+            }
+        ],
+    )
+    monkeypatch.setenv("HOMEDASH_DATABASE", str(database_path))
+    monkeypatch.setattr(
+        "src.weather.fetch_forecast",
+        lambda: {
+            "current": {"temperature_2m": 9.1, "weather_code": 3, "relative_humidity_2m": 82, "wind_speed_10m": 6.0},
+            "daily": {"time": [], "weather_code": [], "temperature_2m_max": [], "temperature_2m_min": [], "precipitation_sum": [], "wind_speed_10m_max": []},
+        },
+    )
+
+    from migration.api import app
+
+    response = TestClient(app).get("/api/v1/weather")
+
+    assert response.status_code == 200
+    assert response.json()["current"]["temperature_2m"] == 9.1
+    assert response.json()["viessmann_outside_celsius"] == 8.4

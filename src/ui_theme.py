@@ -75,10 +75,24 @@ APP_THEME = """
         padding: 0.8rem 0.7rem;
     }
 
+    .weather-card--today { border-color: #c2410c; box-shadow: inset 0 3px 0 #c2410c; }
+    .weather-card__head { align-items: center; display: flex; justify-content: space-between; gap: 0.5rem; }
     .weather-card__day { color: #243b53; font-size: 0.85rem; font-weight: 800; }
-    .weather-card__icon { color: #1d4ed8 !important; font-size: 2rem; line-height: 1.1; margin: 0.45rem 0; }
+    .weather-card__icon { color: #1d4ed8 !important; font-size: 2rem; line-height: 1.1; }
     .weather-card__condition { color: #627d98; font-size: 0.78rem; min-height: 2.1rem; }
-    .weather-card__temps { color: #102a43; font-size: 1rem; font-weight: 800; margin-top: 0.55rem; }
+    .weather-card__temps { align-items: baseline; display: flex; gap: 0.5rem; margin-top: 0.55rem; }
+    .weather-card__temps strong { color: #c2410c; font-size: 1.15rem; }
+    .weather-card__temps span { color: #627d98; font-size: 0.85rem; }
+    .weather-card__range { background: #e6edf3; border-radius: 99px; height: 6px; margin: 0.45rem 0 0.55rem; position: relative; }
+    .weather-card__range span { background: linear-gradient(90deg, #5b8fb9, #c2410c); border-radius: 99px; height: 100%; position: absolute; }
+    .forecast-chart-wrap { overflow-x: auto; }
+    .forecast-chart-wrap svg { display: block; min-width: 680px; width: 100%; }
+    .forecast-chart-legend { color: #627d98; display: flex; flex-wrap: wrap; font-size: 0.72rem; gap: 1rem; margin: 0.2rem 0 0 2.75rem; }
+    .forecast-chart-legend span::before { content: "● "; font-weight: 900; }
+    .forecast-chart-legend__temp::before { color: #c2410c !important; }
+    .forecast-chart-legend__apparent::before { color: #64748b !important; }
+    .forecast-chart-legend__wind::before { color: #2f855a !important; }
+    .forecast-chart-legend__rain::before { color: #8fc6e8 !important; }
     .weather-card__meta { color: #627d98; font-size: 0.72rem; line-height: 1.5; margin-top: 0.35rem; }
 
     .home-hero {

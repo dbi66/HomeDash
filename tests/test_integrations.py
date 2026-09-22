@@ -7,6 +7,10 @@ from src.weather import fetch_forecast
 
 def test_weather_contract_returns_seven_days() -> None:
     forecast = fetch_forecast()
+    assert "current" in forecast
+    assert "temperature_2m" in forecast["current"]
+    assert len(forecast["hourly"]["time"]) >= 24
+    assert len(forecast["hourly"]["temperature_2m"]) >= 24
     daily = forecast["daily"]
     assert len(daily["time"]) == 7
     assert len(daily["weather_code"]) == 7

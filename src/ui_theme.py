@@ -10,8 +10,7 @@ APP_THEME = """
     }
 
     [data-testid="stAppViewContainer"] .main .block-container {
-        padding-top: 0.75rem;
-        padding-bottom: 0.75rem;
+        padding: 0.75rem 0.75rem;
     }
 
     [data-testid="stVerticalBlock"] {

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HomeDash Schema Editor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">HomeDash · Werkzeug</p>
+      <h1>Schema Editor</h1>
+    </div>
+    <div class="topbar-actions">
+      <label class="schema-switcher">Schema <select id="schema-select" aria-label="Aktives Schema"></select></label>
+      <label class="schema-switcher">Vorlage <select id="template-select" aria-label="Neue Schema-Vorlage"><option value="anlagenbild">Anlagenbild</option><option value="hydraulikbild">Hydraulikbild aus Anhang</option></select></label>
+      <button id="template-button" class="button button-subtle" type="button">Vorlage als Schema laden</button>
+      <label class="schema-switcher">Ziel <select id="publish-target" aria-label="Produktionsziel"><option value="functional">Oben · Funktionssicht</option><option value="hydraulic">Unten · Hydrauliksicht</option></select></label>
+      <label class="file-button" title="Schema-JSON laden">
+        <span>Importieren</span>
+        <input id="import-file" type="file" accept="application/json,.json">
+      </label>
+      <button id="production-button" class="button button-production" type="button">Für Produktion bereitstellen</button>
+      <button id="export-button" class="button button-primary" type="button">JSON exportieren</button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="panel palette-panel" aria-label="Komponentenpalette">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Bausteine</p>
+          <h2>Komponenten</h2>
+        </div>
+        <span class="hint">ziehen</span>
+      </div>
+      <div id="palette" class="palette">
+        <button class="palette-item" type="button" draggable="true" data-type="tank"><span class="palette-icon tank-icon"></span><span><strong>Speicher</strong><small>Tank / Puffer</small></span></button>
+        <button class="palette-item" type="button" draggable="true" data-type="unit"><span class="palette-icon unit-icon"></span><span><strong>Inneneinheit</strong><small>Wärmepumpe</small></span></button>
+        <button class="palette-item" type="button" draggable="true" data-type="outdoor"><span class="palette-icon outdoor-icon"></span><span><strong>Außeneinheit</strong><small>Verdichter / Lüfter</small></span></button>
+        <button class="palette-item" type="button" draggable="true" data-type="circuit"><span class="palette-icon circuit-icon"></span><span><strong>Heizkreis</strong><small>Vorlauf / Rücklauf</small></span></button>
+        <button class="palette-item" type="button" draggable="true" data-type="dhw"><span class="palette-icon dhw-icon"></span><span><strong>Warmwasser</strong><small>Speicher / Zirkulation</small></span></button>
+        <button class="palette-item" type="button" draggable="true" data-type="sensor"><span class="palette-icon sensor-icon"></span><span><strong>Messpunkt</strong><small>Wert-Platzhalter</small></span></button>
+      </div>
+      <div class="palette-note">Livewerte werden hier nicht eingetragen. Bindings bleiben als technische Platzhalter im JSON.</div>
+    </aside>
+
+    <section class="editor-area" aria-label="Schema-Arbeitsfläche">
+      <div class="toolbar panel">
+        <div class="toolbar-group">
+          <button id="select-tool" class="icon-button active" type="button" title="Auswählen">↖ <span>Auswählen</span></button>
+          <button id="connect-tool" class="icon-button" type="button" title="Verbindung zeichnen">⌁ <span>Verbinden</span></button>
+          <button id="delete-button" class="icon-button danger" type="button" title="Auswahl löschen">⌫ <span>Löschen</span></button>
+        </div>
+        <div class="toolbar-group toolbar-settings">
+          <label class="toggle"><input id="grid-toggle" type="checkbox" checked><span>Raster</span></label>
+          <label class="toggle"><input id="grid-snap-toggle" type="checkbox" checked><span>Raster-Snap</span></label>
+          <label class="toggle"><input id="object-snap-toggle" type="checkbox" checked><span>Objekt-Snap</span></label>
+          <label class="number-control">Raster <input id="grid-size" type="number" min="4" max="80" step="1" value="20"><span>px</span></label>
+        </div>
+        <span id="status-message" class="status-message" role="status">Bereit</span>
+      </div>
+      <div id="canvas-shell" class="canvas-shell">
+        <svg id="schema-canvas" viewBox="0 0 1200 700" role="application" aria-label="Schema-Arbeitsfläche">
+          <defs>
+            <pattern id="grid-pattern" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="#dbe7ed" stroke-width="1"/></pattern>
+            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#16324a" flood-opacity=".12"/></filter>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#6b8b93"></path></marker>
+          </defs>
+          <rect id="canvas-background" width="1200" height="700" fill="url(#grid-pattern)"></rect>
+          <g id="edges-layer"></g>
+          <g id="nodes-layer"></g>
+        </svg>
+        <div class="canvas-help">Komponente aus der Palette ziehen · mit Raster oder Nachbarobjekt ausrichten</div>
+      </div>
+    </section>
+
+    <aside class="panel inspector-panel" aria-label="Eigenschaften">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Eigenschaften</p>
+          <h2 id="inspector-title">Nichts ausgewählt</h2>
+        </div>
+      </div>
+      <div id="inspector" class="inspector-empty">Wähle eine Komponente aus, um Position, Beschriftung oder Platzhalter-Binding zu bearbeiten.</div>
+      <div id="inspector-form" class="inspector-form hidden">
+        <label>Beschriftung<input id="node-label" type="text"></label>
+        <label>Technischer Schlüssel<input id="node-key" type="text"></label>
+        <div class="form-row"><label>X<input id="node-x" type="number"></label><label>Y<input id="node-y" type="number"></label></div>
+        <div class="form-row"><label>Breite<input id="node-width" type="number" min="80"></label><label>Höhe<input id="node-height" type="number" min="50"></label></div>
+        <label>Platzhalter-Binding<input id="node-binding" type="text" placeholder="heating.bufferCylinder..." spellcheck="false"></label>
+        <label>Werteigenschaft<input id="node-property" type="text" placeholder="value" spellcheck="false"></label>
+        <button id="apply-node" class="button button-primary full-width" type="button">Änderungen übernehmen</button>
+      </div>
+      <div class="inspector-divider"></div>
+      <label class="schema-name">Schema-Name<input id="schema-name" type="text" value="Wärmepumpenanlage"></label>
+      <button id="reset-button" class="button button-subtle full-width" type="button">Beispiel wiederherstellen</button>
+    </aside>
+  </main>
+  <script src="app.js?v=4"></script>
+</body>
+</html>

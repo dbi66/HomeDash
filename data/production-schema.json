@@ -1,0 +1,236 @@
+{
+  "schema_version": 1,
+  "name": "Hydraulikbild · Sensorlayout",
+  "viewport": {
+    "width": 1200,
+    "height": 700
+  },
+  "nodes": [
+    {
+      "id": "outside-temperature",
+      "type": "sensor",
+      "label": "Außenluft",
+      "x": 20,
+      "y": 280,
+      "width": 150,
+      "height": 72,
+      "binding": {
+        "feature": "heating.sensors.temperature.outside",
+        "property": "value",
+        "unit": ""
+      }
+    },
+    {
+      "id": "fan-1",
+      "type": "sensor",
+      "label": "Lüfter 1",
+      "x": 297.5,
+      "y": 157,
+      "width": 150,
+      "height": 72,
+      "binding": {
+        "feature": "heating.primaryCircuit.fans.0.current",
+        "property": "value",
+        "unit": ""
+      }
+    },
+    {
+      "id": "fan-2",
+      "type": "sensor",
+      "label": "Lüfter 2",
+      "x": 297.5,
+      "y": 400,
+      "width": 150,
+      "height": 72,
+      "binding": {
+        "feature": "heating.primaryCircuit.fans.1.current",
+        "property": "value",
+        "unit": ""
+      }
+    },
+    {
+      "id": "evaporator",
+      "type": "unit",
+      "label": "Wärmetauscher",
+      "x": 285,
+      "y": 245,
+      "width": 175,
+      "height": 145,
+      "binding": {
+        "feature": "heating.sensors.temperature.outside",
+        "property": "value",
+        "unit": ""
+      }
+    },
+    {
+      "id": "compressor",
+      "type": "outdoor",
+      "label": "Verdichter",
+      "x": 505,
+      "y": 265,
+      "width": 175,
+      "height": 125,
+      "binding": {
+        "feature": "heating.compressors.0",
+        "property": "phase",
+        "unit": ""
+      }
+    },
+    {
+      "id": "compressor-status",
+      "type": "sensor",
+      "label": "Verdichterstatus",
+      "x": 500,
+      "y": 180,
+      "width": 180,
+      "height": 72,
+      "binding": {
+        "feature": "heating.compressors.0",
+        "property": "active",
+        "unit": ""
+      }
+    },
+    {
+      "id": "pressure-inlet",
+      "type": "sensor",
+      "label": "Druck Eintritt",
+      "x": 730,
+      "y": 20,
+      "width": 180,
+      "height": 72,
+      "binding": {
+        "feature": "heating.compressors.0.sensors.pressure.inlet",
+        "property": "value",
+        "unit": ""
+      }
+    },
+    {
+      "id": "temperature-outlet",
+      "type": "sensor",
+      "label": "Temperatur Auslass",
+      "x": 730,
+      "y": 121,
+      "width": 180,
+      "height": 72,
+      "binding": {
+        "feature": "heating.compressors.0.sensors.temperature.outlet",
+        "property": "value",
+        "unit": ""
+      }
+    },
+    {
+      "id": "temperature-motor",
+      "type": "sensor",
+      "label": "Motortemperatur",
+      "x": 500,
+      "y": 421,
+      "width": 180,
+      "height": 72,
+      "binding": {
+        "feature": "heating.compressors.0.sensors.temperature.motorChamber",
+        "property": "value",
+        "unit": ""
+      }
+    },
+    {
+      "id": "temperature-inlet",
+      "type": "sensor",
+      "label": "Temperatur Eintritt",
+      "x": 760,
+      "y": 346,
+      "width": 180,
+      "height": 72,
+      "binding": {
+        "feature": "heating.compressors.0.sensors.temperature.inlet",
+        "property": "value",
+        "unit": ""
+      }
+    },
+    {
+      "id": "supply",
+      "type": "circuit",
+      "label": "Vorlauf",
+      "x": 760,
+      "y": 220,
+      "width": 175,
+      "height": 90,
+      "binding": {
+        "feature": "heating.boiler.sensors.temperature.commonSupply",
+        "property": "value",
+        "unit": ""
+      }
+    },
+    {
+      "id": "return",
+      "type": "circuit",
+      "label": "Rücklauf",
+      "x": 1000,
+      "y": 382,
+      "width": 175,
+      "height": 90,
+      "binding": {
+        "feature": "heating.sensors.temperature.return",
+        "property": "value",
+        "unit": ""
+      }
+    },
+    {
+      "id": "buffer",
+      "type": "tank",
+      "label": "Pufferspeicher",
+      "x": 1000,
+      "y": 197.5,
+      "width": 175,
+      "height": 120,
+      "binding": {
+        "feature": "heating.bufferCylinder.sensors.temperature.main",
+        "property": "value",
+        "unit": ""
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "air-evaporator",
+      "source": "outside-temperature",
+      "target": "evaporator",
+      "kind": "hydraulic"
+    },
+    {
+      "id": "evaporator-compressor",
+      "source": "evaporator",
+      "target": "compressor",
+      "kind": "hydraulic"
+    },
+    {
+      "id": "compressor-supply",
+      "source": "compressor",
+      "target": "supply",
+      "kind": "hydraulic"
+    },
+    {
+      "id": "supply-buffer",
+      "source": "supply",
+      "target": "buffer",
+      "kind": "hydraulic"
+    },
+    {
+      "id": "buffer-return",
+      "source": "buffer",
+      "target": "return",
+      "kind": "hydraulic"
+    },
+    {
+      "id": "compressor-inlet",
+      "source": "compressor",
+      "target": "temperature-inlet",
+      "kind": "hydraulic"
+    },
+    {
+      "id": "outlet-pressure",
+      "source": "temperature-outlet",
+      "target": "pressure-inlet",
+      "kind": "hydraulic"
+    }
+  ]
+}

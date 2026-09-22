@@ -146,7 +146,7 @@ def render_heat_pump_report(snapshot: object, history: list[dict[str, object]]) 
 
     render_heat_pump_kpis(snapshot, str(DATABASE_PATH))
     st.markdown("### Anlagenbild")
-    st.caption("Schematische Live-Ansicht. Rot = Vorlauf, Blau = hydraulischer Rücklauf; Viessmann liefert hierfür keinen separaten Heizkreis-Sensor.")
+    st.caption("Schematische Live-Ansicht. Der Heizkreis-Vorlauf ist der gemischte Vorlauf; der Rücklaufwert ist der Anlagenrücklauf.")
     render_clear_heat_pump_schema(snapshot)
     st.markdown("### Viessmann-Komponentenbild")
     st.caption("Originalnahe Komponentenansicht mit den verfügbaren Viessmann-Livewerten.")

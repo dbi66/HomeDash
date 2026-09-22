@@ -6,14 +6,24 @@ HomeDash beobachtet eine Homematic-IP-Heizung und eine Viessmann-Wärmepumpe. Di
 
 ## Aktueller Status
 
-Stand: 2026-09-22. Der produktive Dienst läuft auf `8501` mit `backend.api:app`, genau einem Homematic-Collector und genau einem Viessmann-Collector. Die Datenbank ist erreichbar, die Warmwasser- und Pufferspeicherberichte liefern jeweils 24-Stunden-Historien, der Healthcheck ist grün und die Testsuite läuft mit `39 passed`.
+Stand: 2026-09-22. Der produktive Dienst läuft auf `8501` mit `backend.api:app`, genau einem Homematic-Collector und genau einem Viessmann-Collector. Die Datenbank ist erreichbar, die Warmwasser- und Pufferspeicherberichte liefern jeweils 24-Stunden-Historien, der Healthcheck ist grün und die Testsuite läuft mit `40 passed`.
 
 ## Offene Punkte vor 1.0.0
 
-- Beide Wärmepumpen-Schemata benötigen eine visuelle Optimierung. Die aktuelle Darstellung ist funktional, aber noch nicht ausreichend klar, ruhig und hochwertig.
+### Produkt und Betrieb
+
 - SQLite-Schema-Versionierung, Aufbewahrungsregeln und ein dokumentierter Upgrade-/Rollback-Prozess fehlen noch.
 - Nicht unterstützte Homematic-Funktionskanäle werden im Collector-Log gemeldet und sollten für einen ruhigeren Betrieb bewertet werden.
 - Ein eigenes Favicon fehlt noch; der Dienst beantwortet `favicon.ico` derzeit mit `404`.
+
+### Frontend-Parität
+
+- Die statische UI zeigt die Status-Endpunkte noch nicht als echte Freshness-/Problemhinweise an; `/api/v1/status` ist vorhanden, wird aber nicht visualisiert.
+- Einstellungen und die read-only Viessmann-Inventory-Abfrage gehören derzeit nur zum archivierten Streamlit-Fallback und nicht zur statischen UI.
+
+### Dokumentation
+
+- `docs/archive/MIGRATION_PLAN.md` enthält noch historische Begriffe wie `migration.api`, `run_migration_prod.sh` und SvelteKit und sollte als Archiv eindeutig vom aktuellen FastAPI-Stand abgegrenzt oder bereinigt werden.
 
 ## Funktionen
 
@@ -22,7 +32,7 @@ Stand: 2026-09-22. Der produktive Dienst läuft auf `8501` mit `backend.api:app`
 - Raumbericht und Diagramme für alle Räume
 - Wetterbericht für Aystetten (Open-Meteo) mit aktuellen Bedingungen, stündlichem Temperaturverlauf für heute und 7-Tage-Prognose
 - Optionaler Viessmann-Außentemperatursensor direkt im Wetterbericht
-- Viessmann-Inventory, Wärmepumpenbericht, Systemübersicht und Energiekennzahlen
+- Wärmepumpenbericht, Systemübersicht und Energiekennzahlen in der statischen UI; Viessmann-Inventory und Einstellungen im Streamlit-Fallback
 - Warmwasserspeicher-Temperatur als KPI im Home- und Wärmepumpen-Dashboard
 - 24-Stunden-Verläufe für Warmwasserspeicher und Pufferspeicher im Wärmepumpenbericht
 - Kompakter Betriebsstand-Indikator in der oberen Navigation
@@ -48,7 +58,7 @@ Open-Meteo API ---------------------------------------> Wetterseite
 - `src/` enthält Provider, Datenmodelle, Repository-Zugriff, Berechnungen und Views.
 - `scripts/collect_snapshot.py` speichert Homematic-Raumwerte und Snapshots.
 - `scripts/collect_viessmann.py` speichert Viessmann-Wärmepumpen-Snapshots.
-- `scripts/run_prod.sh` startet die produktive FastAPI-UI und genau einen Collector-Satz.
+- `scripts/run_prod.sh` startet die produktive FastAPI-UI und genau einen Collector-Satz. Das Skript ist fest an Port `8501` gebunden und startet immer beide Collector.
 - `app.py` und `scripts/run_dashboard.sh` bleiben bis zum Abschluss der Rollback-Aufbewahrung archiviert.
 - `data/heating_data.db` ist die Standarddatenbank und wird nicht ins Repository eingecheckt.
 
@@ -143,6 +153,24 @@ Nur die UI starten:
 HOMEDASH_PROVIDER=mock .venv/bin/python -m streamlit run app.py --server.headless true
 ```
 
+## Schema-Editor
+
+Für die Wärmepumpen-Schemata gibt es eine getrennte, statische Editor-App unter `schema-editor/`. Sie verändert die Hauptanwendung nicht und speichert keine Livewerte. Die Komponenten enthalten ausschließlich Layout, Verbindungen und technische Platzhalter-Bindings.
+
+Zum Öffnen genügt ein statischer HTTP-Server im Projektverzeichnis:
+
+```bash
+.venv/bin/python schema-editor/server.py
+```
+
+Danach `http://localhost:8080` öffnen. Komponenten können aus der Palette auf die Arbeitsfläche gezogen werden. `Raster-Snap` richtet Positionen am Raster aus, `Objekt-Snap` richtet Kanten und Mittellinien an benachbarten Komponenten aus. Mit `Verbinden` lassen sich zwei Komponenten verknüpfen. `JSON exportieren` erzeugt eine Diagrammdefinition; `default-schema.json` ist ein Beispiel und enthält keine aktuellen Messwerte.
+
+Die beiden aktuellen Produktionsschemata werden beim Start automatisch geladen. Über `Schema` kann zwischen der oberen Funktionssicht und der unteren Hydraulik-/Sensorsicht gewechselt werden. Mit `Ziel` wird festgelegt, welches Produktionsschema überschrieben wird: `Oben · Funktionssicht` schreibt `data/functional-schema.json`, `Unten · Hydrauliksicht` schreibt `data/production-schema.json`. Erst danach auf `Für Produktion bereitstellen` klicken. Die lokale Editor-App speichert die geladenen Schemata zusätzlich im Browser.
+
+Für das zweite Schema kann in der Auswahl `Vorlage` die Option `Hydraulikbild aus Anhang` gewählt und mit `Vorlage als Schema laden` geöffnet werden. Diese Vorlage bildet die sichtbare Struktur des Referenzbilds nach und verwendet nur Platzhalter-Bindings für die erkannten Werte: Außentemperatur, Lüfter 1/2, Verdichterstatus, Verdichter-Eintrittsdruck, Verdichtertemperaturen für Auslass, Eintritt und Motorkammer sowie gemeinsamer Vorlauf, Rücklauf und Pufferspeicher. Nicht vorhandene Werte erscheinen später als `nicht verfügbar`; es werden keine Messwerte im Layout festgeschrieben.
+
+Die exportierte Definition kann später von der Hauptanwendung als Layout geladen werden. Dafür bleibt das Format mit `schema_version`, `nodes`, `edges` und Platzhalter-`binding` bewusst unabhängig von der Live-API.
+
 ## Konfiguration
 
 Alle Variablen sind optional:
@@ -156,7 +184,7 @@ Alle Variablen sind optional:
 | `HOMEDASH_COLLECTOR_INTERVAL` | `900` | Homematic-Abfrage in Sekunden |
 | `HOMEDASH_VIESSMANN_INTERVAL` | `1800` | Viessmann-Abfrage in Sekunden |
 | `HOMEDASH_PROVIDER_TIMEOUT_SECONDS` | `30` | Maximale Dauer eines Provideraufrufs vor Retry |
-| `HOMEDASH_RUN_COLLECTORS` | `1` | Collector-Prozesse aktivieren; für reine Test-UI auf `0` setzen |
+| `HOMEDASH_RUN_COLLECTORS` | `1` | Collector-Prozesse des Streamlit-Launchers aktivieren; für reine Test-UI auf `0` setzen. `scripts/run_prod.sh` startet Collector immer |
 | `HOMEDASH_ELECTRICITY_PRICE` | `0.30` | Preis in EUR/kWh für Kostenkennzahlen |
 | `HOMEDASH_CONFIG` | `config.ini` | Pfad zur Homematic-Konfiguration |
 | `VIESSMANN_TOKEN_FILE` | keine | Lokaler PyViCare-Token |
@@ -181,7 +209,7 @@ Die API kann auf `8503` testweise gestartet werden:
 .venv/bin/uvicorn backend.api:app --host 0.0.0.0 --port 8503
 ```
 
-Verfügbare Endpunkte sind `/health/live`, `/health/ready`, `/api/v1/home`, `/api/v1/status`, `/api/v1/rooms`, Raumhistorien, `/api/v1/heat-pump`, `/api/v1/heat-pump/report` und `/api/v1/weather`. Der Wetter-Endpunkt liefert aktuelle Bedingungen, stündliche Werte für den 7-Tage-Zeitraum, Tagesprognosen sowie den optionalen Viessmann-Außensensor. Die API öffnet SQLite ausschließlich read-only.
+Verfügbare Endpunkte sind `/health/live`, `/health/ready`, `/api/v1/home`, `/api/v1/status`, `/api/v1/rooms`, Raumhistorien, `/api/v1/heat-pump`, `/api/v1/heat-pump/report`, `/api/v1/heat-pump/functional-schema`, `/api/v1/heat-pump/schema` und `/api/v1/weather`. Die Funktionssicht oben wird aus `data/functional-schema.json` geladen, die Hydraulik-/Sensorsicht unten aus `data/production-schema.json`; beide werden read-only ausgeliefert und mit aktuellen Reportwerten anhand der Platzhalter-Bindings befüllt. Der Wetter-Endpunkt ruft aktuelle Bedingungen, stündliche Werte für den 7-Tage-Zeitraum und Tagesprognosen extern über Open-Meteo ab und ergänzt optional den Viessmann-Außensensor. Die API öffnet SQLite ausschließlich read-only.
 
 ## Daten und Collector
 
@@ -317,7 +345,9 @@ HomeDash/
 ├── requirements.txt
 ├── data/
 │   ├── heating_data.db        # Laufzeitdaten, lokal
-│   └── vicare_token.json      # optional, lokal
+│   ├── functional-schema.json  # Produktionslayout: obere Funktionssicht
+│   ├── production-schema.json  # Produktionslayout: untere Hydrauliksicht
+│   └── vicare_token.json       # optional, lokal
 ├── scripts/
 │   ├── backup_database.py
 │   ├── collect_snapshot.py
@@ -335,6 +365,11 @@ HomeDash/
 ├── frontend/
 │   ├── app.js
 │   └── index.html
+├── schema-editor/
+│   ├── app.js                  # Layout-Editor und Produktionsübergabe
+│   ├── index.html
+│   ├── server.py
+│   └── styles.css
 ├── src/
 │   ├── app_shell.py           # Header und Navigation
 │   ├── database.py             # SQLite-Zugriff und Schema

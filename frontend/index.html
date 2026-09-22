@@ -36,8 +36,8 @@
     .nav-status { align-items:center; background:#e6ffed; border:1px solid #b7ebc6; border-radius:8px; color:#176b35; display:inline-flex; font-size:.72rem; font-weight:800; margin-left:auto; padding:8px 11px; }
     .room-card { cursor:pointer; text-align:left; width:100%; }
     .room-card:hover { border-color:#9fb3c8; box-shadow:0 3px 12px rgba(16,42,67,.08); }
-    .chart-wrap { overflow-x:auto; }
-    .chart-wrap svg { display:block; min-width:560px; width:100%; }
+    .chart-wrap { overflow:hidden; }
+    .chart-wrap svg { display:block; height:auto; max-width:100%; width:100%; }
     .chart-legend { color:var(--muted); display:flex; font-size:.75rem; gap:18px; padding:0 0 4px 28px; }
     .chart-legend span { font-weight:750; }
     .chart-axis-title { fill:var(--muted); font-size:11px; font-weight:750; }
@@ -46,8 +46,8 @@
     .report-table th { color:var(--muted); font-size:.72rem; text-transform:uppercase; }
     .chart-grid { display:grid; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr)); }
     .chart-grid .card { overflow:hidden; }
-    .forecast-grid { display:grid; gap:10px; grid-template-columns:repeat(7,minmax(132px,1fr)); overflow-x:auto; padding-bottom:4px; }
-    .forecast-day { min-width:132px; }
+    .forecast-grid { display:grid; gap:10px; grid-template-columns:repeat(4,minmax(0,1fr)); padding-bottom:4px; }
+    .forecast-day { min-width:0; }
     .forecast-day-today { border-color:#c2410c; box-shadow:inset 0 3px 0 #c2410c; }
     .forecast-day__head { align-items:center; display:flex; justify-content:space-between; gap:8px; }
     .forecast-day__icon { font-size:1.7rem; line-height:1; }
@@ -57,16 +57,30 @@
     .forecast-day__temps span { color:var(--muted); font-size:.85rem; }
     .forecast-range { background:#e6edf3; border-radius:99px; height:6px; margin:8px 0 10px; position:relative; }
     .forecast-range span { background:linear-gradient(90deg,#5b8fb9,#c2410c); border-radius:99px; height:100%; position:absolute; }
-    .forecast-chart-wrap { overflow-x:auto; }
-    .forecast-chart-wrap svg { display:block; min-width:680px; width:100%; }
+    .forecast-chart-wrap { overflow:hidden; }
+    .forecast-chart-wrap svg { display:block; height:auto; max-width:100%; width:100%; }
     .forecast-chart-legend { color:var(--muted); display:flex; flex-wrap:wrap; font-size:.72rem; gap:16px; margin:3px 0 0 44px; }
     .forecast-chart-legend span::before { content:"● "; font-weight:900; }
     .forecast-chart-legend__temp::before { color:#c2410c !important; }
     .forecast-chart-legend__apparent::before { color:#64748b !important; }
     .forecast-chart-legend__wind::before { color:#2f855a !important; }
     .forecast-chart-legend__rain::before { color:#8fc6e8 !important; }
-    .schema-card { overflow-x:auto; }
-    .schema-card svg { display:block; min-width:720px; width:100%; }
+    .schema-card { overflow:hidden; }
+    .schema-card svg { display:block; height:auto; max-width:100%; width:100%; }
+    .configured-edges path { fill:none; stroke:#6b8b93; stroke-linecap:round; stroke-width:6; }
+    .configured-node-body { fill:#fff; stroke:#377c82; stroke-width:2; }
+    .configured-node-shape { fill:#e8f3f1; stroke:#377c82; stroke-width:2; }
+    .configured-node-tank { fill:#d9f0ec; }
+    .configured-node-sensor-card .configured-node-body { fill:#fffdf5; stroke:#c58a22; stroke-width:2.5; }
+    .configured-node-sensor { fill:#fff4c7; stroke:#c58a22; }
+    .configured-node-title { fill:#153047; font-family:Georgia,"Times New Roman",serif; font-weight:700; }
+    .configured-node-type { fill:#647b87; font:11px ui-sans-serif,system-ui,sans-serif; }
+    .configured-node-status { fill:#0f766e; font:700 12px ui-sans-serif,system-ui,sans-serif; }
+    .configured-node-value { fill:#377c82; font:11px ui-monospace,monospace; }
+    .configured-node-value-panel { fill:#fff1bd; stroke:#e1b84f; stroke-width:1; }
+    .configured-node-value-panel:not(.configured-node-value-panel-sensor) { fill:#e8f3f1; stroke:#9fcfc7; }
+    .configured-node-value-panel-sensor { fill:#fff1bd; stroke:#e1b84f; }
+    .configured-node-value-large { fill:#805b08; font-size:15px; font-weight:800; }
     .series-controls { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:10px; }
     .series-controls button { background:#fff; border:1px solid var(--line); border-radius:8px; color:var(--ink); cursor:pointer; font:inherit; font-size:.75rem; font-weight:750; padding:8px 10px; }
     .series-controls button.active { background:#102a43; border-color:#102a43; color:#fff; }
@@ -77,10 +91,15 @@
     .dhw-history__summary div { background:#fffaf0; border:1px solid #fde68a; border-radius:8px; padding:10px; }
     .dhw-history__summary span { color:#92400e; display:block; font-size:.7rem; font-weight:750; }
     .dhw-history__summary strong { color:#78350f; display:block; font-size:1.15rem; margin-top:4px; }
-    .dhw-history__chart { overflow-x:auto; }
-    .dhw-history__chart svg { display:block; min-width:680px; width:100%; }
+    .dhw-history__chart { overflow:hidden; }
+    .dhw-history__chart svg { display:block; height:auto; max-width:100%; width:100%; }
     .dhw-history__note { color:var(--muted); font-size:.72rem; margin-top:8px; }
     .storage-history-grid { display:grid; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .storage-history-grid--combined { grid-template-columns:1fr; }
+    .combined-storage-legend { color:var(--muted); display:flex; flex-wrap:wrap; font-size:.75rem; gap:18px; margin-top:8px; }
+    .combined-storage-legend span::before { content:"━ "; font-weight:900; }
+    .combined-storage-legend__dhw::before { color:#d97706 !important; }
+    .combined-storage-legend__buffer::before { color:#2563eb !important; }
     .actual::before { color:#c2410c; content:"━ "; font-weight:900; }
     .target::before { color:#64748b; content:"┄ "; font-weight:900; }
     .error { border-color:#fecaca; color:#991b1b; }
@@ -91,8 +110,8 @@
       .grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .rooms { grid-template-columns:1fr; }
       .chart-grid { grid-template-columns:1fr; }
+      .forecast-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .dhw-history__summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
-      .storage-history-grid { grid-template-columns:1fr; }
       .card { padding:11px; }
     }
   </style>

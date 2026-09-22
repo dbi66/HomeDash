@@ -18,6 +18,8 @@ from src.viessmann_heatpump import feature_values, system_map
 
 
 DATABASE_PATH = Path(os.getenv("HOMEDASH_DATABASE", "data/heating_data.db"))
+PRODUCTION_SCHEMA_PATH = Path(__file__).resolve().parents[1] / "data" / "production-schema.json"
+FUNCTIONAL_SCHEMA_PATH = Path(__file__).resolve().parents[1] / "data" / "functional-schema.json"
 
 app = FastAPI(
     title="HomeDash API",
@@ -328,6 +330,28 @@ def heat_pump_report() -> dict[str, Any] | None:
             if isinstance(item, dict) and item.get("timestamp")
         },
     }
+
+
+def _read_schema(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    try:
+        schema = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise HTTPException(status_code=500, detail=f"Invalid production schema: {error}") from error
+    if schema.get("schema_version") != 1 or not isinstance(schema.get("nodes"), list) or not isinstance(schema.get("edges"), list):
+        raise HTTPException(status_code=500, detail="Invalid production schema format")
+    return schema
+
+
+@app.get("/api/v1/heat-pump/schema")
+def heat_pump_schema() -> dict[str, Any] | None:
+    return _read_schema(PRODUCTION_SCHEMA_PATH)
+
+
+@app.get("/api/v1/heat-pump/functional-schema")
+def heat_pump_functional_schema() -> dict[str, Any] | None:
+    return _read_schema(FUNCTIONAL_SCHEMA_PATH)
 
 
 @app.get("/api/v1/weather")

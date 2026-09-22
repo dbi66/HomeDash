@@ -39,4 +39,4 @@ COLLECTOR_PID=$!
 "$PYTHON_BIN" scripts/collect_viessmann.py --interval "$VIESSMANN_COLLECTOR_INTERVAL" &
 VIESSMANN_COLLECTOR_PID=$!
 
-exec "$PYTHON_BIN" -m uvicorn migration.api:app --host "$BIND_ADDRESS" --port "$PORT"
+exec "$PYTHON_BIN" -m uvicorn backend.api:app --host "$BIND_ADDRESS" --port "$PORT"

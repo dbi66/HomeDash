@@ -20,9 +20,9 @@ from src.viessmann_heatpump import feature_values, system_map
 DATABASE_PATH = Path(os.getenv("HOMEDASH_DATABASE", "data/heating_data.db"))
 
 app = FastAPI(
-    title="HomeDash Migration API",
-    version="0.10.0-dev",
-    description="Read-only API for the HomeDash migration prototype.",
+    title="HomeDash API",
+    version="1.0.0",
+    description="Read-only API for the HomeDash dashboard.",
 )
 
 
@@ -361,4 +361,4 @@ def room_history(
     return [HistoryPointResponse(**dict(row)) for row in rows]
 
 
-app.mount("/", StaticFiles(directory=Path(__file__).with_name("web"), html=True), name="migration-web")
+app.mount("/", StaticFiles(directory=Path(__file__).resolve().parents[1] / "frontend", html=True), name="dashboard-web")

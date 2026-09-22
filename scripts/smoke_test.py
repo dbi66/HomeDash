@@ -16,7 +16,7 @@ def main() -> int:
     with urlopen(arguments.url, timeout=5) as response:
         body = response.read().decode("utf-8", errors="replace")
     normalized_body = body.lower()
-    required_markers = ("<html", "streamlit", "/static/")
+    required_markers = ("<html", "homeclimate dashboard", "/app.js")
     missing = [marker for marker in required_markers if marker not in normalized_body]
     if missing:
         raise RuntimeError(f"dashboard response missing markers: {', '.join(missing)}")

@@ -6,8 +6,8 @@ from src.database import initialize_database, save_readings, save_viessmann_snap
 from src.models import RoomReading
 
 
-def test_migration_api_reads_room_data_without_provider_access(tmp_path, monkeypatch) -> None:
-    database_path = tmp_path / "migration.db"
+def test_api_reads_room_data_without_provider_access(tmp_path, monkeypatch) -> None:
+    database_path = tmp_path / "api.db"
     initialize_database(database_path)
     save_readings(
         database_path,
@@ -25,7 +25,7 @@ def test_migration_api_reads_room_data_without_provider_access(tmp_path, monkeyp
     )
     monkeypatch.setenv("HOMEDASH_DATABASE", str(database_path))
 
-    from migration.api import app
+    from backend.api import app
 
     client = TestClient(app)
     response = client.get("/api/v1/rooms")
@@ -35,12 +35,12 @@ def test_migration_api_reads_room_data_without_provider_access(tmp_path, monkeyp
     assert response.json()[0]["current_temperature"] == 21.5
 
 
-def test_migration_api_reports_database_readiness(tmp_path, monkeypatch) -> None:
-    database_path = tmp_path / "migration.db"
+def test_api_reports_database_readiness(tmp_path, monkeypatch) -> None:
+    database_path = tmp_path / "api.db"
     initialize_database(database_path)
     monkeypatch.setenv("HOMEDASH_DATABASE", str(database_path))
 
-    from migration.api import app
+    from backend.api import app
 
     response = TestClient(app).get("/health/ready")
 
@@ -49,8 +49,8 @@ def test_migration_api_reports_database_readiness(tmp_path, monkeypatch) -> None
     assert response.json()["database"] == "read-only"
 
 
-def test_migration_api_serves_home_shell() -> None:
-    from migration.api import app
+def test_api_serves_home_shell() -> None:
+    from backend.api import app
 
     response = TestClient(app).get("/")
 
@@ -58,8 +58,8 @@ def test_migration_api_serves_home_shell() -> None:
     assert "HomeClimate Dashboard" in response.text
 
 
-def test_migration_api_serves_frontend_entrypoint() -> None:
-    from migration.api import app
+def test_api_serves_frontend_entrypoint() -> None:
+    from backend.api import app
 
     response = TestClient(app).get("/app.js")
 
@@ -67,8 +67,8 @@ def test_migration_api_serves_frontend_entrypoint() -> None:
     assert "api/v1/home" in response.text
 
 
-def test_migration_api_home_summary_is_read_only(tmp_path, monkeypatch) -> None:
-    database_path = tmp_path / "migration.db"
+def test_api_home_summary_is_read_only(tmp_path, monkeypatch) -> None:
+    database_path = tmp_path / "api.db"
     initialize_database(database_path)
     save_readings(
         database_path,
@@ -86,7 +86,7 @@ def test_migration_api_home_summary_is_read_only(tmp_path, monkeypatch) -> None:
     )
     monkeypatch.setenv("HOMEDASH_DATABASE", str(database_path))
 
-    from migration.api import app
+    from backend.api import app
 
     response = TestClient(app).get("/api/v1/home")
 
@@ -95,8 +95,8 @@ def test_migration_api_home_summary_is_read_only(tmp_path, monkeypatch) -> None:
     assert response.json()["rooms"][0]["room_name"] == "Küche"
 
 
-def test_migration_api_returns_room_history(tmp_path, monkeypatch) -> None:
-    database_path = tmp_path / "migration.db"
+def test_api_returns_room_history(tmp_path, monkeypatch) -> None:
+    database_path = tmp_path / "api.db"
     initialize_database(database_path)
     save_readings(
         database_path,
@@ -114,7 +114,7 @@ def test_migration_api_returns_room_history(tmp_path, monkeypatch) -> None:
     )
     monkeypatch.setenv("HOMEDASH_DATABASE", str(database_path))
 
-    from migration.api import app
+    from backend.api import app
 
     response = TestClient(app).get("/api/v1/rooms/Wohnzimmer/history?hours=24")
 
@@ -122,8 +122,8 @@ def test_migration_api_returns_room_history(tmp_path, monkeypatch) -> None:
     assert response.json()[0]["current_temperature"] == 22.0
 
 
-def test_migration_api_returns_heat_pump_report(tmp_path, monkeypatch) -> None:
-    database_path = tmp_path / "migration.db"
+def test_api_returns_heat_pump_report(tmp_path, monkeypatch) -> None:
+    database_path = tmp_path / "api.db"
     initialize_database(database_path)
     save_viessmann_snapshots(
         database_path,
@@ -145,7 +145,7 @@ def test_migration_api_returns_heat_pump_report(tmp_path, monkeypatch) -> None:
     )
     monkeypatch.setenv("HOMEDASH_DATABASE", str(database_path))
 
-    from migration.api import app
+    from backend.api import app
 
     response = TestClient(app).get("/api/v1/heat-pump/report")
 
@@ -155,8 +155,8 @@ def test_migration_api_returns_heat_pump_report(tmp_path, monkeypatch) -> None:
     assert "metrics" in response.json()
 
 
-def test_migration_api_weather_includes_current_conditions_and_viessmann_sensor(tmp_path, monkeypatch) -> None:
-    database_path = tmp_path / "migration.db"
+def test_api_weather_includes_current_conditions_and_viessmann_sensor(tmp_path, monkeypatch) -> None:
+    database_path = tmp_path / "api.db"
     initialize_database(database_path)
     save_viessmann_snapshots(
         database_path,
@@ -185,7 +185,7 @@ def test_migration_api_weather_includes_current_conditions_and_viessmann_sensor(
         },
     )
 
-    from migration.api import app
+    from backend.api import app
 
     response = TestClient(app).get("/api/v1/weather")
 

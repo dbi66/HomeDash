@@ -1,6 +1,6 @@
 # HomeClimate Dashboard 0.10.0
 
-Die `0.10.0`-Version ist der produktive Migrationsstand mit FastAPI-Backend, statischer Dashboard-Oberfläche, mobilen Diagrammen und getrennten Collectors.
+Die `1.0.0`-Version ist der produktive HomeDash-Stand mit FastAPI-Backend, statischer Dashboard-Oberfläche, mobilen Diagrammen und getrennten Collectors.
 
 HomeDash beobachtet eine Homematic-IP-Heizung und eine Viessmann-Wärmepumpe. Die produktive API und UI lesen SQLite; nur die beiden Collector schreiben neue Messwerte. Heizungs- oder Geräteeinstellungen werden nicht verändert.
 
@@ -31,13 +31,13 @@ Viessmann API -┘                                      +-> Tailscale Serve
 Open-Meteo API ---------------------------------------> Wetterseite
 ```
 
-- `app.py` enthält den archivierten Streamlit-Fallback.
-- `migration/` enthält die read-only FastAPI-Migrations-API (`0.10.0-dev`).
+- `backend/` enthält die read-only FastAPI-API (`1.0.0`).
+- `frontend/` enthält die statische Dashboard-Oberfläche.
 - `src/` enthält Provider, Datenmodelle, Repository-Zugriff, Berechnungen und Views.
 - `scripts/collect_snapshot.py` speichert Homematic-Raumwerte und Snapshots.
 - `scripts/collect_viessmann.py` speichert Viessmann-Wärmepumpen-Snapshots.
-- `scripts/run_migration_prod.sh` startet die produktive FastAPI-UI und genau einen Collector-Satz.
-- `scripts/run_dashboard.sh` bleibt als Streamlit-Fallback erhalten.
+- `scripts/run_prod.sh` startet die produktive FastAPI-UI und genau einen Collector-Satz.
+- `app.py` und `scripts/run_dashboard.sh` bleiben bis zum Abschluss der Rollback-Aufbewahrung archiviert.
 - `data/heating_data.db` ist die Standarddatenbank und wird nicht ins Repository eingecheckt.
 
 ## Neuaufbau aus einem frischen Checkout
@@ -155,7 +155,7 @@ Beispiel für einen alternativen Port:
 HOMEDASH_PORT=8502 sh scripts/run_dashboard.sh
 ```
 
-`8503` ist der read-only Migrationstestport. Dort laufen keine Collector und keine Provider-Abfragen:
+`8503` ist der read-only Testport. Dort laufen keine Collector und keine Provider-Abfragen:
 
 ```bash
 HOMEDASH_PORT=8503 HOMEDASH_RUN_COLLECTORS=0 sh scripts/run_dashboard.sh
@@ -163,10 +163,10 @@ HOMEDASH_PORT=8503 HOMEDASH_RUN_COLLECTORS=0 sh scripts/run_dashboard.sh
 
 Der produktive Dienst auf `8501` ist der einzige Prozess, der Provider abfragt und die operative Datenbank aktualisiert. Niemals `8503` mit Collectors starten.
 
-Der erste Migrations-API-Slice läuft auf `8503`:
+Die API kann auf `8503` testweise gestartet werden:
 
 ```bash
-.venv/bin/uvicorn migration.api:app --host 0.0.0.0 --port 8503
+.venv/bin/uvicorn backend.api:app --host 0.0.0.0 --port 8503
 ```
 
 Verfügbare Endpunkte sind `/health/live`, `/health/ready`, `/api/v1/home`, `/api/v1/status`, `/api/v1/rooms`, Raumhistorien, `/api/v1/heat-pump`, `/api/v1/heat-pump/report` und `/api/v1/weather`. Der Wetter-Endpunkt liefert aktuelle Bedingungen, stündliche Werte für den 7-Tage-Zeitraum, Tagesprognosen sowie den optionalen Viessmann-Außensensor. Die API öffnet SQLite ausschließlich read-only.
@@ -298,7 +298,7 @@ HOMEDASH_PORT=8502 sh scripts/run_dashboard.sh
 
 ```text
 HomeDash/
-├── app.py
+├── app.py                    # archivierter Streamlit-Fallback
 ├── config.ini                 # lokal, geheim, nicht teilen
 ├── requirements.txt
 ├── data/
@@ -311,12 +311,16 @@ HomeDash/
 │   ├── healthcheck.py
 │   ├── init_db.py
 │   ├── inspect_homematic.py
-│   ├── run_dashboard.sh
+│   ├── run_dashboard.sh       # archivierter Streamlit-Fallback
+│   ├── run_prod.sh
 │   ├── smoke_test.py
 │   └── homedash.service
-├── migration/
+├── backend/
 │   ├── __init__.py
-│   └── api.py                  # read-only FastAPI-Migrationsslice
+│   └── api.py                  # read-only FastAPI-API
+├── frontend/
+│   ├── app.js
+│   └── index.html
 ├── src/
 │   ├── app_shell.py           # Header und Navigation
 │   ├── database.py             # SQLite-Zugriff und Schema

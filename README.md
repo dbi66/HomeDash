@@ -4,6 +4,17 @@
 
 HomeDash beobachtet eine Homematic-IP-Heizung und eine Viessmann-Wärmepumpe. Die produktive API und UI lesen SQLite; nur die beiden Collector schreiben neue Messwerte. Heizungs- oder Geräteeinstellungen werden nicht verändert.
 
+## Aktueller Status
+
+Stand: 2026-09-22. Der produktive Dienst läuft auf `8501` mit `backend.api:app`, genau einem Homematic-Collector und genau einem Viessmann-Collector. Die Datenbank ist erreichbar, die Warmwasser- und Pufferspeicherberichte liefern jeweils 24-Stunden-Historien, der Healthcheck ist grün und die Testsuite läuft mit `39 passed`.
+
+## Offene Punkte vor 1.0.0
+
+- Beide Wärmepumpen-Schemata benötigen eine visuelle Optimierung. Die aktuelle Darstellung ist funktional, aber noch nicht ausreichend klar, ruhig und hochwertig.
+- SQLite-Schema-Versionierung, Aufbewahrungsregeln und ein dokumentierter Upgrade-/Rollback-Prozess fehlen noch.
+- Nicht unterstützte Homematic-Funktionskanäle werden im Collector-Log gemeldet und sollten für einen ruhigeren Betrieb bewertet werden.
+- Ein eigenes Favicon fehlt noch; der Dienst beantwortet `favicon.ico` derzeit mit `404`.
+
 ## Funktionen
 
 - Raumübersicht nach Etage mit Temperatur, Luftfeuchte, Zieltemperatur, Ventilstellung und Trends
@@ -345,4 +356,4 @@ Das Dashboard ist für den lokalen bzw. vertrauenswürdigen Netzwerkbetrieb ausg
 
 - Viessmann kann elektrische Tagesverbrauchswerte mit `0 kWh` oder veralteten Quellzeitstempeln liefern, obwohl Wärmeerzeugung vorhanden ist. Die App zeigt diesen Zustand ausdrücklich an und erfindet keinen Verbrauchswert.
 - Viessmann-Sensoren werden innerhalb eines Snapshots nicht immer gleichzeitig aktualisiert. Wärmepumpenschemata zeigen deshalb die jeweiligen Sensorzeitpunkte neben den Messwerten.
-- SQLite-Schema-Versionierung, Aufbewahrungsregeln und ein dokumentierter Upgrade-/Rollback-Prozess bleiben bis zur finalen `1.0.0` offene Betriebsaufgaben.
+- Die vollständige Liste der offenen Punkte steht im Abschnitt „Offene Punkte vor 1.0.0“.

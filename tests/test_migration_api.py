@@ -132,7 +132,14 @@ def test_migration_api_returns_heat_pump_report(tmp_path, monkeypatch) -> None:
                 "id": "heat-pump-1",
                 "model": "E3_Vitocal_16",
                 "online": True,
-                "features": {"data": []},
+                "features": {
+                    "data": [
+                        {
+                            "feature": "heating.dhw.sensors.temperature.dhwCylinder",
+                            "properties": {"value": {"value": 48.5}},
+                        }
+                    ]
+                },
             }
         ],
     )
@@ -144,4 +151,5 @@ def test_migration_api_returns_heat_pump_report(tmp_path, monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["model"] == "E3_Vitocal_16"
+    assert response.json()["metrics"]["dhw_celsius"] == 48.5
     assert "metrics" in response.json()

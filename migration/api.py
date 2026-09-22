@@ -52,6 +52,7 @@ class HeatPumpResponse(BaseModel):
     compressor_active: bool | None = None
     floor_supply_celsius: float | None = None
     buffer_celsius: float | None = None
+    dhw_celsius: float | None = None
     produced_energy_today_kwh: float
 
 
@@ -157,6 +158,7 @@ def _latest_heat_pump(connection: sqlite3.Connection) -> dict[str, Any] | None:
         "compressor_active": _feature_value(features, "heating.compressors.0", "active"),
         "floor_supply_celsius": _feature_value(features, "heating.circuits.0.sensors.temperature.supply", "value"),
         "buffer_celsius": _feature_value(features, "heating.bufferCylinder.sensors.temperature.main", "value"),
+        "dhw_celsius": _feature_value(features, "heating.dhw.sensors.temperature.dhwCylinder", "value"),
         "produced_energy_today_kwh": sum(
             float(_feature_value(features, feature, "currentDay") or 0)
             for feature in (

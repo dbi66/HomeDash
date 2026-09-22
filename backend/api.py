@@ -303,12 +303,23 @@ def heat_pump_report() -> dict[str, Any] | None:
         {"recorded_at": row["recorded_at"], "features": json.loads(row["features_json"])}
         for row in history_rows
     ]
+    dhw_history = []
+    buffer_history = []
+    for item in history:
+        value = _feature_value(item["features"], "heating.dhw.sensors.temperature.dhwCylinder", "value")
+        if isinstance(value, (int, float)):
+            dhw_history.append({"recorded_at": item["recorded_at"], "celsius": float(value)})
+        value = _feature_value(item["features"], "heating.bufferCylinder.sensors.temperature.main", "value")
+        if isinstance(value, (int, float)):
+            buffer_history.append({"recorded_at": item["recorded_at"], "celsius": float(value)})
     return {
         "model": snapshot.model,
         "device_id": snapshot.device_id,
         "online": snapshot.online,
         "recorded_at": latest_row["recorded_at"],
         "metrics": asdict(build_heat_pump_metrics(snapshot, history)),
+        "dhw_history": dhw_history,
+        "buffer_history": buffer_history,
         "features": feature_values(snapshot),
         "system_map": system_map(snapshot),
         "feature_timestamps": {

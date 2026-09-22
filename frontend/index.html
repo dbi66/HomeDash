@@ -73,6 +73,14 @@
     .feature-table { max-height:420px; overflow:auto; }
     .feature-table table { border-collapse:collapse; width:100%; }
     .feature-table th, .feature-table td { border-bottom:1px solid var(--line); padding:7px; text-align:left; }
+    .dhw-history__summary { display:grid; gap:10px; grid-template-columns:repeat(4,minmax(0,1fr)); margin-bottom:16px; }
+    .dhw-history__summary div { background:#fffaf0; border:1px solid #fde68a; border-radius:8px; padding:10px; }
+    .dhw-history__summary span { color:#92400e; display:block; font-size:.7rem; font-weight:750; }
+    .dhw-history__summary strong { color:#78350f; display:block; font-size:1.15rem; margin-top:4px; }
+    .dhw-history__chart { overflow-x:auto; }
+    .dhw-history__chart svg { display:block; min-width:680px; width:100%; }
+    .dhw-history__note { color:var(--muted); font-size:.72rem; margin-top:8px; }
+    .storage-history-grid { display:grid; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr)); }
     .actual::before { color:#c2410c; content:"━ "; font-weight:900; }
     .target::before { color:#64748b; content:"┄ "; font-weight:900; }
     .error { border-color:#fecaca; color:#991b1b; }
@@ -83,6 +91,8 @@
       .grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .rooms { grid-template-columns:1fr; }
       .chart-grid { grid-template-columns:1fr; }
+      .dhw-history__summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .storage-history-grid { grid-template-columns:1fr; }
       .card { padding:11px; }
     }
   </style>
@@ -98,6 +108,6 @@
     <section class="grid" id="metrics"></section>
     <div id="content"><p class="empty">Daten werden geladen ...</p></div>
   </main>
-  <script src="/app.js?v=0.10.19"></script>
+  <script src="/app.js?v=0.10.21"></script>
 </body>
 </html>

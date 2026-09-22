@@ -137,6 +137,10 @@ def test_api_returns_heat_pump_report(tmp_path, monkeypatch) -> None:
                         {
                             "feature": "heating.dhw.sensors.temperature.dhwCylinder",
                             "properties": {"value": {"value": 48.5}},
+                        },
+                        {
+                            "feature": "heating.bufferCylinder.sensors.temperature.main",
+                            "properties": {"value": {"value": 31.2}},
                         }
                     ]
                 },
@@ -152,6 +156,8 @@ def test_api_returns_heat_pump_report(tmp_path, monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json()["model"] == "E3_Vitocal_16"
     assert response.json()["metrics"]["dhw_celsius"] == 48.5
+    assert response.json()["dhw_history"] == [{"recorded_at": response.json()["recorded_at"], "celsius": 48.5}]
+    assert response.json()["buffer_history"] == [{"recorded_at": response.json()["recorded_at"], "celsius": 31.2}]
     assert "metrics" in response.json()
 
 

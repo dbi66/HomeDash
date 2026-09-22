@@ -1,6 +1,6 @@
-# HomeClimate Dashboard 0.10.0
+# HomeClimate Dashboard 0.99a
 
-Die `1.0.0`-Version ist der produktive HomeDash-Stand mit FastAPI-Backend, statischer Dashboard-Oberfläche, mobilen Diagrammen und getrennten Collectors.
+`0.99a` ist der aktuelle Pre-Release-Stand von HomeDash mit FastAPI-Backend, statischer Dashboard-Oberfläche, mobilen Diagrammen und getrennten Collectors. Der produktive Dienst läuft bereits auf diesem Stack; die Version dient der Abnahme vor `1.0.0`.
 
 HomeDash beobachtet eine Homematic-IP-Heizung und eine Viessmann-Wärmepumpe. Die produktive API und UI lesen SQLite; nur die beiden Collector schreiben neue Messwerte. Heizungs- oder Geräteeinstellungen werden nicht verändert.
 
@@ -13,6 +13,7 @@ HomeDash beobachtet eine Homematic-IP-Heizung und eine Viessmann-Wärmepumpe. Di
 - Optionaler Viessmann-Außentemperatursensor direkt im Wetterbericht
 - Viessmann-Inventory, Wärmepumpenbericht, Systemübersicht und Energiekennzahlen
 - Warmwasserspeicher-Temperatur als KPI im Home- und Wärmepumpen-Dashboard
+- 24-Stunden-Verläufe für Warmwasserspeicher und Pufferspeicher im Wärmepumpenbericht
 - Kompakter Betriebsstand-Indikator in der oberen Navigation
 - Systemstatus für veraltete Daten, Heizprobleme und fehlende Verbrauchswerte
 - Mock-Modus für Entwicklung ohne Homematic-Hardware
@@ -31,7 +32,7 @@ Viessmann API -┘                                      +-> Tailscale Serve
 Open-Meteo API ---------------------------------------> Wetterseite
 ```
 
-- `backend/` enthält die read-only FastAPI-API (`1.0.0`).
+- `backend/` enthält die read-only FastAPI-API (`0.99a`).
 - `frontend/` enthält die statische Dashboard-Oberfläche.
 - `src/` enthält Provider, Datenmodelle, Repository-Zugriff, Berechnungen und Views.
 - `scripts/collect_snapshot.py` speichert Homematic-Raumwerte und Snapshots.
@@ -219,9 +220,11 @@ Die ausgegebene `https://...ts.net`-Adresse kann im mobilen Browser verwendet we
 
 Der aktuelle Tailscale-Zugriff ist auf das Dashboard begrenzt. Eine spätere Verschärfung kann HomeDash zusätzlich ausschließlich an `127.0.0.1` binden; der Tailscale-Serve-Proxy bleibt dann der einzige externe Einstiegspunkt.
 
-## Migration nach 0.9a
+## Release und Rollback
 
-Die Streamlit-Version `0.9a` ist als `v0.9a` archiviert. Der produktive Migrationsstand läuft auf Commit `9c02dd6` oder neuer. Bei Problemen wird der User-Service gestoppt und der archivierte Streamlit-Fallback wiederhergestellt; Tailscale bleibt auf `8501`.
+Der aktuelle Stand ist `0.99a` Pre-Release. Die frühere Streamlit-Version `0.9a` ist als `v0.9a` archiviert. Der Produktionsbaum vor der Strukturbereinigung ist zusätzlich mit `pre-cleanup-20260922` markiert.
+
+Bei Problemen wird der User-Service gestoppt und der archivierte Streamlit-Fallback aus `v0.9a` wiederhergestellt; Tailscale bleibt auf `8501`.
 
 ## Systemd-Betrieb
 
@@ -338,8 +341,8 @@ HomeDash/
 
 Das Dashboard ist für den lokalen bzw. vertrauenswürdigen Netzwerkbetrieb ausgelegt. Zugangsdaten, Token, `config.ini`, Environment-Dateien und Datenbank-Backups gehören nicht in Git. Vor Wartung oder Migration immer ein Backup erstellen.
 
-## 0.9a bekannte Einschränkungen
+## 0.99a bekannte Einschränkungen
 
 - Viessmann kann elektrische Tagesverbrauchswerte mit `0 kWh` oder veralteten Quellzeitstempeln liefern, obwohl Wärmeerzeugung vorhanden ist. Die App zeigt diesen Zustand ausdrücklich an und erfindet keinen Verbrauchswert.
 - Viessmann-Sensoren werden innerhalb eines Snapshots nicht immer gleichzeitig aktualisiert. Wärmepumpenschemata zeigen deshalb die jeweiligen Sensorzeitpunkte neben den Messwerten.
-- SQLite-Schema-Versionierung, Aufbewahrungsregeln und ein dokumentierter Upgrade-/Rollback-Prozess sind nach dem Prerelease weiterhin offene Betriebsaufgaben.
+- SQLite-Schema-Versionierung, Aufbewahrungsregeln und ein dokumentierter Upgrade-/Rollback-Prozess bleiben bis zur finalen `1.0.0` offene Betriebsaufgaben.

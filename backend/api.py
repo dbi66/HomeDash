@@ -28,6 +28,14 @@ app = FastAPI(
     description="Read-only API for the HomeDash dashboard.",
 )
 
+APP_RELEASE = "0.99b"
+APP_CHANNEL = "Produktiv"
+
+
+@app.get("/api/v1/meta")
+def meta() -> dict[str, str]:
+    return {"release": APP_RELEASE, "channel": APP_CHANNEL, "api_version": app.version}
+
 
 class RoomReadingResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

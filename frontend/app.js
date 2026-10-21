@@ -3,7 +3,7 @@ let chartsRenderGeneration = 0;
 let functionalSchema = null;
 let productionSchema = null;
 const isProduction = window.location.port === "8501";
-const appLabel = isProduction ? "Produktiv" : "Migrationstest";
+let appLabel = isProduction ? "Produktiv" : "Migrationstest";
 document.title = isProduction ? "HomeClimate Dashboard" : "HomeClimate Migration";
 
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -36,7 +36,7 @@ function renderHeader() {
     const formatted = date.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
     return `${formatted} (vor ${minutes} Min.)`;
   };
-  document.querySelector("#operating-status").textContent = `${isProduction ? "Betriebsstand · Produktiv" : "Teststand · Migration"} · Port ${window.location.port || "80"}`;
+  document.querySelector("#operating-status").textContent = `${isProduction ? "Betriebsstand · " + appLabel : "Teststand · " + appLabel} · Port ${window.location.port || "80"}`;
   document.querySelector("#freshness").textContent = `Homematic: ${formatFreshness(state.home.latest_homematic)} · Viessmann: ${formatFreshness(state.home.latest_viessmann)}`;
 }
 
@@ -413,4 +413,4 @@ async function render() {
   }
 }
 
-Promise.all([getJson("/api/v1/home"), getJson("/api/v1/rooms"), getJson("/api/v1/heat-pump/functional-schema").catch(() => null), getJson("/api/v1/heat-pump/schema").catch(() => null)]).then(([home, rooms, functional, schema]) => { state.home = home; state.rooms = rooms; functionalSchema = functional; productionSchema = schema; renderHeader(); render(); }).catch((error) => { document.querySelector("#freshness").textContent = `Migration API nicht erreichbar: ${error.message}`; });
+Promise.all([getJson("/api/v1/meta").catch(() => null), getJson("/api/v1/home"), getJson("/api/v1/rooms"), getJson("/api/v1/heat-pump/functional-schema").catch(() => null), getJson("/api/v1/heat-pump/schema").catch(() => null)]).then(([meta, home, rooms, functional, schema]) => { if (meta && meta.release) { appLabel = `${meta.channel} ${meta.release}`; document.title = `HomeClimate Dashboard ${meta.release}`; } state.home = home; state.rooms = rooms; functionalSchema = functional; productionSchema = schema; renderHeader(); render(); }).catch((error) => { document.querySelector("#freshness").textContent = `Migration API nicht erreichbar: ${error.message}`; });

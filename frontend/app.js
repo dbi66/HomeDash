@@ -1,4 +1,4 @@
-const state = { home: null, rooms: [], view: "home", chartSeries: { current_temperature: true, target_temperature: true, humidity: true, valve_position: true } };
+const state = { home: null, rooms: [], view: "home", analysisHours: 168, chartSeries: { current_temperature: true, target_temperature: true, humidity: true, valve_position: true } };
 let chartsRenderGeneration = 0;
 let functionalSchema = null;
 let productionSchema = null;
@@ -242,6 +242,104 @@ function combinedStorageHistoryChart(dhwHistory, bufferHistory) {
   return `<div class="dhw-history"><div class="dhw-history__summary"><div><span>Warmwasser aktuell</span><strong>${series[0].points.length ? series[0].points.at(-1).value.toFixed(1) : "n/a"} °C</strong></div><div><span>Puffer aktuell</span><strong>${series[1].points.length ? series[1].points.at(-1).value.toFixed(1) : "n/a"} °C</strong></div><div><span>Messreihen</span><strong>2</strong></div></div><div class="dhw-history__chart"><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Temperaturverlauf von Warmwasserspeicher und Pufferspeicher über die letzten 24 Stunden">${grid}${lines}${dots}${timeLabels}<text x="${left}" y="15" fill="#52606d" font-size="11" font-weight="700">Speichertemperaturen · °C</text></svg></div><div class="combined-storage-legend"><span class="combined-storage-legend__dhw">Warmwasserspeicher</span><span class="combined-storage-legend__buffer">Pufferspeicher</span></div><div class="dhw-history__note">Archivierte Viessmann-Messwerte · Zeitraum: letzte 24 Stunden</div></div>`;
 }
 
+const SEVERITY_STYLES = { critical: ["#fdecea", "#c92a2a", "#f1aeb5"], warning: ["#fff4d6", "#e67700", "#ffd43b"], info: ["#e7f5ff", "#1971c2", "#a5d8ff"], ok: ["#e6ffed", "#176b35", "#b7ebc6"] };
+
+async function renderAnalysis() {
+  const report = await getJson(`/api/v1/heat-pump/analysis?hours=${state.analysisHours}`);
+  if (state.view !== "analysis") return;
+  document.querySelector("#page-title").textContent = "Heizungsanalyse";
+  const windows = [[24, "24 h"], [168, "7 Tage"], [720, "30 Tage"], [8784, "Alle"]];
+  const windowButtons = windows.map(([hours, label]) => `<button class="back-button${state.analysisHours === hours ? " active" : ""}" data-analysis-window="${hours}">${label}</button>`).join("");
+  if (!report) {
+    document.querySelector("#metrics").innerHTML = "";
+    document.querySelector("#content").innerHTML = `<div class="series-controls">${windowButtons}</div><div class="card empty">Noch nicht genügend Wärmepumpen-Daten archiviert für eine Analyse.</div>`;
+    return;
+  }
+  const fmt = (value, unit = "", digits = 1) => value == null ? "n/a" : `${Number(value).toFixed(digits)} ${unit}`.trim();
+  document.querySelector("#metrics").innerHTML = [
+    metric("Anlagen-Score", `${report.score} / 100`, report.score_label),
+    metric("Verdichterstarts", fmt(report.cycling.starts, "", 0), `${fmt(report.cycling.starts_per_day)} pro Tag`),
+    metric("Ø Zyklusdauer", fmt(report.cycling.avg_cycle_minutes, "min", 0), "je Verdichterstart"),
+    metric("Verdichter aktiv", fmt(report.cycling.duty_cycle_pct, "%", 0), "im Zeitraum"),
+    metric("Hysterese ein/aus", report.hysteresis.switch_on_k == null ? "n/a" : `${report.hysteresis.switch_on_k.toFixed(1)} / ${report.hysteresis.switch_off_k?.toFixed(1)} K`, "geschätzt")
+  ].join("");
+  const findings = report.findings.map((finding) => {
+    const [background, ink, border] = SEVERITY_STYLES[finding.severity] || SEVERITY_STYLES.info;
+    return `<article class="card" style="background:${background};border-color:${border}"><div class="room-name" style="color:${ink}">${esc(finding.title)}</div><div class="room-detail" style="color:${ink}">${esc(finding.detail)}</div><div class="room-detail" style="margin-top:6px"><em>Empfehlung: ${esc(finding.recommendation)}</em></div></article>`;
+  }).join("");
+  const curveCard = `<article class="card"><h2>Heizkurve: konfiguriert vs. Ist</h2>${curveFitChart(report.curve)}<div class="room-detail" style="margin-top:8px">Punkte: archivierte Snapshots (Außen vs. Ist-Vorlauf) · rot: konfigurierte Kurve · blau gestrichelt: Regression der Ist-Werte.<br>Kurve: Neigung ${fmt(report.curve.configured_slope, "", 2)} · Niveau ${fmt(report.curve.configured_shift, "K", 0)} · Ist-Neigung ${fmt(report.curve.empirical_slope, "", 2)} · Abweichung Kurve ${fmt(report.curve.median_residual_k, "K")} · Abweichung Regler-Soll ${fmt(report.curve.median_active_deviation_k, "K")} · ${esc(report.curve.verdict)}</div></article>`;
+  const dailyCard = `<article class="card"><h2>Taktung pro Tag</h2>${dailyCyclingChart(report.daily)}</article>`;
+  const startsVsOutside = `<article class="card"><h2>Starts vs. Außentemperatur</h2>${startsOutsideChart(report.daily)}<div class="room-detail" style="margin-top:8px">Viele Starts bei mildem Wetter sind ein typisches Takten-Muster.</div></article>`;
+  const hysteresisCard = `<article class="card"><h2>Hysterese: erkannte Schaltpunkte</h2>${hysteresisChart(report.cycling.observed_cycles || [])}<div class="room-detail" style="margin-top:8px">Abweichung Ist-Vorlauf vom Soll zum Zeitpunkt von Verdichter-Start (rot) und -Stopp (grün). Auflösung ~30 min: die tatsächlichen Schaltpunkte liegen zwischen den Snapshots.</div></article>`;
+  document.querySelector("#content").innerHTML = `<div class="series-controls">${windowButtons}</div><section class="section"><h2>Bewertung & Empfehlungen</h2><div class="rooms">${findings}</div></section><section class="section"><div class="chart-grid">${curveCard}${dailyCard}${startsVsOutside}${hysteresisCard}</div></section>`;
+}
+
+function curveFitChart(curve) {
+  const points = curve.points || [];
+  if (points.length < 3) return '<div class="empty">Zu wenige Datenpunkte.</div>';
+  const width = 760; const height = 320; const left = 48; const right = 24; const top = 26; const bottom = 44;
+  const xs = points.map((point) => point.outside); const ys = points.map((point) => point.supply);
+  const xMin = Math.floor(Math.min(...xs) - 2); const xMax = Math.ceil(Math.max(...xs) + 2);
+  const yMin = Math.floor(Math.min(...ys) - 2); const yMax = Math.ceil(Math.max(...ys, 40) + 2);
+  const x = (value) => left + (value - xMin) * (width - left - right) / Math.max(1, xMax - xMin);
+  const y = (value) => height - bottom - (value - yMin) * (height - top - bottom) / Math.max(1, yMax - yMin);
+  const dots = points.map((point) => `<circle cx="${x(point.outside).toFixed(1)}" cy="${y(point.supply).toFixed(1)}" r="3.5" fill="#486581" opacity=".4"/>`).join("");
+  const curveLine = (curve.configured_slope != null && curve.configured_shift != null) ? `<line x1="${x(xMin)}" y1="${y(Math.max(10, Math.min(40, 20 + curve.configured_slope * (20 - xMin) + curve.configured_shift)))}" x2="${x(xMax)}" y2="${y(Math.max(10, Math.min(40, 20 + curve.configured_slope * (20 - xMax) + curve.configured_shift)))}" stroke="#c2410c" stroke-width="3"/>` : "";
+  const fitLine = (curve.empirical_slope != null && curve.empirical_intercept != null) ? `<line x1="${x(xMin)}" y1="${y(curve.empirical_intercept - curve.empirical_slope * xMin)}" x2="${x(xMax)}" y2="${y(curve.empirical_intercept - curve.empirical_slope * xMax)}" stroke="#1864ab" stroke-width="2.5" stroke-dasharray="7 5"/>` : "";
+  const grid = [0, 10, 20, 30, 40].filter((value) => value >= yMin && value <= yMax).map((value) => `<line x1="${left}" y1="${y(value)}" x2="${width - right}" y2="${y(value)}" stroke="#e6edf3"/><text x="${left - 7}" y="${y(value) + 4}" text-anchor="end" fill="#627d98" font-size="11">${value}°</text>`).join("");
+  const xTicks = [-20, -10, 0, 10, 20].filter((value) => value >= xMin && value <= xMax).map((value) => `<text x="${x(value)}" y="${height - 18}" text-anchor="middle" fill="#627d98" font-size="10">${value}°</text>`).join("");
+  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Heizkurve: Außentemperatur gegen Vorlauftemperatur">${grid}${dots}${curveLine}${fitLine}<line x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}" stroke="#9fb3c8"/><line x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}" stroke="#9fb3c8"/>${xTicks}<text x="${left}" y="14" fill="#52606d" font-size="11" font-weight="700">Vorlauf °C · ${points.length} Messpunkte</text><text x="${width - right}" y="${height - 4}" text-anchor="end" fill="#52606d" font-size="11" font-weight="700">Außentemperatur °C</text></svg>`;
+}
+
+function dailyCyclingChart(daily) {
+  const rows = (daily || []).filter((item) => item.starts != null);
+  if (!rows.length) return '<div class="empty">Keine Tagesdaten verfügbar.</div>';
+  const width = 760; const height = 300; const left = 48; const right = 44; const top = 26; const bottom = 44;
+  const maxStarts = Math.max(4, ...rows.map((item) => item.starts));
+  const maxCycle = Math.max(20, ...rows.map((item) => item.avg_cycle_minutes || 0));
+  const slot = (width - left - right) / Math.max(1, rows.length);
+  const yStarts = (value) => height - bottom - value * (height - top - bottom) / maxStarts;
+  const yCycle = (value) => height - bottom - value * (height - top - bottom) / maxCycle;
+  const bars = rows.map((item, index) => `<rect x="${left + index * slot + 2}" y="${yStarts(item.starts)}" width="${Math.max(4, slot - 4)}" height="${height - bottom - yStarts(item.starts)}" rx="3" fill="#94a3b8" opacity=".85"/>`).join("");
+  const cyclePoints = rows.map((item, index) => item.avg_cycle_minutes == null ? null : `${(left + index * slot + slot / 2).toFixed(1)},${yCycle(item.avg_cycle_minutes).toFixed(1)}`).filter(Boolean).join(" ");
+  const cycleLine = cyclePoints ? `<polyline points="${cyclePoints}" fill="none" stroke="#c2410c" stroke-width="2.5"/>` : "";
+  const labels = rows.map((item, index) => index % Math.max(1, Math.ceil(rows.length / 7)) === 0 ? `<text x="${left + index * slot + slot / 2}" y="${height - 18}" text-anchor="middle" fill="#627d98" font-size="9">${esc(item.day.slice(5))}</text>` : "").join("");
+  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Verdichterstarts und Zyklusdauer pro Tag">${bars}${cycleLine}<line x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}" stroke="#9fb3c8"/>${labels}<text x="${left}" y="14" fill="#52606d" font-size="11" font-weight="700">Starts (Balken, max ${maxStarts.toFixed(0)})</text><text x="${width - right}" y="14" text-anchor="end" fill="#c2410c" font-size="11" font-weight="700">Ø Zyklus min (Linie, max ${maxCycle.toFixed(0)})</text></svg>`;
+}
+
+function startsOutsideChart(daily) {
+  const rows = (daily || []).filter((item) => item.starts != null && item.avg_outside_celsius != null);
+  if (rows.length < 3) return '<div class="empty">Zu wenige Tagesdaten.</div>';
+  const width = 760; const height = 280; const left = 48; const right = 24; const top = 26; const bottom = 44;
+  const xs = rows.map((item) => item.avg_outside_celsius); const ys = rows.map((item) => item.starts);
+  const xMin = Math.floor(Math.min(...xs) - 1); const xMax = Math.ceil(Math.max(...xs) + 1);
+  const yMax = Math.max(4, Math.ceil(Math.max(...ys) + 2));
+  const x = (value) => left + (value - xMin) * (width - left - right) / Math.max(1, xMax - xMin);
+  const y = (value) => height - bottom - value * (height - top - bottom) / yMax;
+  const dots = rows.map((item) => `<circle cx="${x(item.avg_outside_celsius).toFixed(1)}" cy="${y(item.starts).toFixed(1)}" r="5" fill="#7c3aed" opacity=".65"/>`).join("");
+  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Verdichterstarts über der Außentemperatur">${dots}<line x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}" stroke="#9fb3c8"/><line x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}" stroke="#9fb3c8"/><text x="${left}" y="14" fill="#52606d" font-size="11" font-weight="700">Starts pro Tag</text><text x="${width - right}" y="${height - 4}" text-anchor="end" fill="#52606d" font-size="11" font-weight="700">Ø Außentemperatur °C</text></svg>`;
+}
+
+function hysteresisChart(cycles) {
+  const events = (cycles || []).flatMap((cycle) => {
+    const items = [];
+    if (cycle.deviation_at_start_k != null) items.push({ time: new Date(cycle.started_at), deviation: cycle.deviation_at_start_k, kind: "Start" });
+    if (cycle.ended_at && cycle.deviation_at_end_k != null) items.push({ time: new Date(cycle.ended_at), deviation: cycle.deviation_at_end_k, kind: "Stopp" });
+    return items;
+  }).filter((item) => !Number.isNaN(item.time.getTime()));
+  if (events.length < 2) return '<div class="empty">Zu wenige Schaltpunkte erkannt.</div>';
+  const width = 760; const height = 280; const left = 48; const right = 24; const top = 26; const bottom = 44;
+  const times = events.map((item) => item.time.getTime());
+  const deviations = events.map((item) => item.deviation);
+  const start = Math.min(...times); const end = Math.max(...times);
+  const dMin = Math.floor(Math.min(...deviations, -3)); const dMax = Math.ceil(Math.max(...deviations, 3));
+  const x = (timestamp) => left + (timestamp - start) * (width - left - right) / Math.max(1, end - start);
+  const y = (value) => height - bottom - (value - dMin) * (height - top - bottom) / Math.max(1, dMax - dMin);
+  const dots = events.map((item) => `<circle cx="${x(item.time.getTime()).toFixed(1)}" cy="${y(item.deviation).toFixed(1)}" r="5" fill="${item.kind === "Start" ? "#d9480f" : "#2b8a3e"}" opacity=".7"/>`).join("");
+  const zeroLine = dMin < 0 && dMax > 0 ? `<line x1="${left}" y1="${y(0)}" x2="${width - right}" y2="${y(0)}" stroke="#94a3b8" stroke-dasharray="4 4"/>` : "";
+  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Erkannte Schaltpunkte des Verdichters">${zeroLine}${dots}<line x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}" stroke="#9fb3c8"/><text x="${left}" y="14" fill="#52606d" font-size="11" font-weight="700">Ist − Soll (K) · <tspan fill="#d9480f">Start</tspan> / <tspan fill="#2b8a3e">Stopp</tspan></text></svg>`;
+}
+
 function storageHistoryChart(history, title, lineColor, fillColor) {
   const points = (history || []).map((point) => ({ time: new Date(point.recorded_at), value: Number(point.celsius) })).filter((point) => Number.isFinite(point.value) && !Number.isNaN(point.time.getTime()));
   if (points.length < 2) return `<div class="empty">Noch keine ausreichende ${esc(title)}-Historie verfügbar.</div>`;
@@ -303,11 +401,13 @@ async function render() {
     else if (state.view === "room-report") renderRoomReport();
     else if (state.view === "charts") await renderCharts();
     else if (state.view === "heat-pump") await renderHeatPump();
+    else if (state.view === "analysis") await renderAnalysis();
     else if (state.view === "weather") await renderWeather();
     else renderHome();
     document.querySelectorAll("[data-room]").forEach((button) => { button.onclick = () => { state.selectedRoom = button.dataset.room; state.view = "room"; render(); }; });
     document.querySelectorAll("[data-view]").forEach((button) => { button.onclick = () => setView(button.dataset.view); });
     document.querySelectorAll("[data-series]").forEach((button) => { button.onclick = () => { state.chartSeries[button.dataset.series] = !state.chartSeries[button.dataset.series]; button.classList.toggle("active", state.chartSeries[button.dataset.series]); render(); }; });
+    document.querySelectorAll("[data-analysis-window]").forEach((button) => { button.onclick = () => { state.analysisHours = Number(button.dataset.analysisWindow); render(); }; });
   } catch (error) {
     document.querySelector("#content").innerHTML = `<div class="card error">Migration API nicht erreichbar: ${esc(error.message)}</div>`;
   }

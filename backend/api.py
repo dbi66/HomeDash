@@ -12,6 +12,7 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
 from fastapi.staticfiles import StaticFiles
 
+from src.heat_pump_analysis import analyze_performance, extract_samples
 from src.models import HeatPumpSnapshot
 from src.monitoring import build_heat_pump_metrics
 from src.viessmann_heatpump import feature_values, system_map
@@ -342,6 +343,53 @@ def _read_schema(path: Path) -> dict[str, Any] | None:
     if schema.get("schema_version") != 1 or not isinstance(schema.get("nodes"), list) or not isinstance(schema.get("edges"), list):
         raise HTTPException(status_code=500, detail="Invalid production schema format")
     return schema
+
+
+@app.get("/api/v1/heat-pump/analysis")
+def heat_pump_analysis(hours: int = Query(default=7 * 24, ge=1, le=366 * 24)) -> dict[str, Any] | None:
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+    try:
+        with _connect_read_only() as connection:
+            rows = connection.execute(
+                """
+                SELECT recorded_at, features_json
+                FROM viessmann_snapshots
+                WHERE recorded_at >= ?
+                  AND (lower(model) LIKE '%vitocal%' OR lower(model) LIKE '%heatpump%')
+                ORDER BY recorded_at
+                """,
+                (cutoff,),
+            ).fetchall()
+    except (FileNotFoundError, sqlite3.Error) as error:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {error}") from error
+
+    history = [
+        {"recorded_at": row["recorded_at"], "features": json.loads(row["features_json"])}
+        for row in rows
+    ]
+    if len(history) < 4:
+        return None
+    report = analyze_performance(history)
+    raw_points = [
+        {"outside": sample.outside_celsius, "supply": sample.supply_celsius}
+        for sample in extract_samples(history)
+        if sample.outside_celsius is not None and sample.supply_celsius is not None
+    ]
+    max_points = 500
+    step = max(1, len(raw_points) // max_points)
+    points = raw_points[::step]
+    return {
+        "window_hours": hours,
+        "samples": len(history),
+        "score": report.score,
+        "score_label": report.score_label,
+        "findings": [asdict(finding) for finding in report.findings],
+        "curve": {**asdict(report.curve), "points": points},
+        "hysteresis": asdict(report.hysteresis),
+        "cycling": asdict(report.cycling),
+        "rod_share_pct": report.rod_share_pct,
+        "daily": [asdict(item) for item in report.daily],
+    }
 
 
 @app.get("/api/v1/heat-pump/schema")

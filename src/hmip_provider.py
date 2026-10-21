@@ -62,7 +62,8 @@ def map_room_readings(home: Home) -> list[RoomReading]:
                     grouped_valves.setdefault(group_key, []).append(valve)
 
     for (room_name, level), devices in grouped_devices.items():
-        temperatures: list[float] = []
+        room_temperatures: list[float] = []
+        valve_temperatures: list[float] = []
         targets: list[float] = []
         humidities: list[float] = []
         valves: list[float] = grouped_valves.get((room_name, level), []).copy()
@@ -74,9 +75,16 @@ def map_room_readings(home: Home) -> list[RoomReading]:
                 continue
             seen_devices.add(device_id)
 
-            temperature = _number(device, "actualTemperature", "valveActualTemperature")
-            if temperature is not None:
-                temperatures.append(temperature)
+            # actualTemperature is the wall/room sensor; valveActualTemperature is
+            # measured at the radiator valve itself and reads hot while the valve
+            # is open, so it must never be blended with real room temperatures.
+            room_temperature = _number(device, "actualTemperature")
+            if room_temperature is not None:
+                room_temperatures.append(room_temperature)
+            else:
+                valve_temperature = _number(device, "valveActualTemperature")
+                if valve_temperature is not None:
+                    valve_temperatures.append(valve_temperature)
 
             target = _number(device, "setPointTemperature")
             if target is not None:
@@ -89,6 +97,10 @@ def map_room_readings(home: Home) -> list[RoomReading]:
             valve = _percent(_number(device, "valvePosition"))
             if valve is not None:
                 valves.append(valve)
+
+        # Prefer real room sensors; only fall back to valve-mounted sensors when
+        # a room has no dedicated thermostat reporting actualTemperature.
+        temperatures = room_temperatures if room_temperatures else valve_temperatures
 
         if not temperatures:
             continue

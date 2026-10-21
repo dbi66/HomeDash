@@ -1,12 +1,12 @@
-# HomeClimate Dashboard 0.99a
+# HomeClimate Dashboard 0.99b
 
-`0.99a` ist der aktuelle Pre-Release-Stand von HomeDash mit FastAPI-Backend, statischer Dashboard-Oberfläche, mobilen Diagrammen und getrennten Collectors. Der produktive Dienst läuft bereits auf diesem Stack; die Version dient der Abnahme vor `1.0.0`.
+`0.99b` ist der aktuelle Pre-Release-Stand von HomeDash mit FastAPI-Backend, statischer Dashboard-Oberfläche, mobilen Diagrammen, getrennten Collectors und einer Heizungsanalyse-Auswertung der Wärmepumpe. Der produktive Dienst läuft bereits auf diesem Stack; die Version dient der Abnahme vor `1.0.0`.
 
 HomeDash beobachtet eine Homematic-IP-Heizung und eine Viessmann-Wärmepumpe. Die produktive API und UI lesen SQLite; nur die beiden Collector schreiben neue Messwerte. Heizungs- oder Geräteeinstellungen werden nicht verändert.
 
 ## Aktueller Status
 
-Stand: 2026-09-22. Der produktive Dienst läuft auf `8501` mit `backend.api:app`, genau einem Homematic-Collector und genau einem Viessmann-Collector. Die Datenbank ist erreichbar, die Warmwasser- und Pufferspeicherberichte liefern jeweils 24-Stunden-Historien, der Healthcheck ist grün und die Testsuite läuft mit `40 passed`.
+Stand: 2026-10-21. Der produktive Dienst läuft auf `8501` mit `backend.api:app`, genau einem Homematic-Collector und genau einem Viessmann-Collector (beide systemd-supervisiert). Die Datenbank ist erreichbar, die Heizungsanalyse wertet das Viessmann-Archiv aus, der Healthcheck ist grün und die Testsuite läuft mit `52 passed`.
 
 ## Offene Punkte vor 1.0.0
 
@@ -43,6 +43,34 @@ Stand: 2026-09-22. Der produktive Dienst läuft auf `8501` mit `backend.api:app`
 - Kompakte mobile Kennzahlen und Raumkarten ohne horizontales Überlaufen
 - Gemeinsame Messreihen-Auswahl in „Alle Diagramme“ statt wiederholter Diagrammsteuerungen
 - Zeitstempel direkt an Viessmann-Sensorwerten, wenn Messwerte nicht synchron aktualisiert wurden
+- **Heizungsanalyse** als eigene Seite der statischen UI: Anlagen-Score, Befunde und Empfehlungen, Heizkurven-Abgleich (konfiguriert vs. empirische Regression, verglichen mit dem Regler-Soll), exakte Verdichterstarts und Ø Zyklusdauer aus den Zählerständen, Tages-Taktung, Starts-vs.-Außentemperatur, empirisch geschätzte Schalthysterese (Auflösung ~30 min) — optionaler Zeitraum 24 h / 7 d / 30 d / alle
+- Server-gemeldete Release-Anzeige im UI-Header über `/api/v1/meta` (portunabhängig, auch über Tailscale/VPN korrekt)
+
+## Nächste logische Aufgaben
+
+### Kurzfristig (vor 1.0.0)
+
+- Freshness-/Problemhinweise aus `/api/v1/status` in der statischen UI visualisieren
+- Einstellungen und Viessmann-Inventory aus dem Streamlit-Fallback in die statische UI überführen (letzte verbleibende Streamlit-Funktion)
+- SQLite-Schema-Versionierung und Aufbewahrungsregeln (Retention für `viessmann_snapshots`, `room_readings`) festlegen
+- Favicon ergänzen
+- `docs/archive/MIGRATION_PLAN.md` als Archiv kennzeichnen oder bereinigen
+
+### Analyse-Ausbau
+
+- Heizkurven-Vorschlag: aus der empirischen Regression konkrete slope/shift-Empfehlung ableiten (aktuell nur Bewertung, kein Zielwert)
+- Witterungsgeführte Bewertung: Starts und Zyklusdauer in Abhängigkeit von Außentemperatur-Bändern normalisieren (mildes Wetter ≠ kaltes Wetter)
+- Längere Zeitreihen: saisonaler Vergleich der Jahresarbeitszahl (JAZ) aus `heating.heat.production.summary.*` vs. `heating.power.consumption.summary.*`
+- Optional: `HOMEDASH_HEATING_TYPE` (floor/radiator) als Konfiguration, damit die Vorlauf-Richtwerte nicht hartcodiert sind
+
+### LLM-basierte Wärmepumpen-Analyse (Machbarkeit geprüft)
+
+**Machbar — gut geeignet als Erweiterung.** Der Analyse-Report (`GET /api/v1/heat-pump/analysis`) ist bereits ein kompaktes, strukturiertes JSON (Score, Befunde, Kurven-Fit, Taktung, Tageswerte) — genau die Form, die ein LLM gut in Fließtext-Empfehlungen übersetzen kann. Architektur-Passung:
+
+- Der Endpoint bleibt read-only; ein LLM-Schritt würde ausschließlich **aggregierte Kennzahlen** (keine Rohdaten, keine Zugangsdaten) an eine externe API senden — Datenschutz-Risiko ist gering, muss aber aktiv abgewogen werden (Betriebsdaten verlassen das LAN).
+- Umsetzung: optionaler, per `HOMEDASH_LLM_*`-Env aktivierbarer Endpoint, z. B. `POST /api/v1/heat-pump/analysis/interpret`, der den vorhandenen Report an OpenAI/Anthropic/Ollama-kompatible API schickt und eine deutsche Einordnung zurückliefert. `requests` ist bereits Abhängigkeit; Timeout und Fehlerbehandlung analog zu `src/retry.py`.
+- Kosten/Nutzen: Die regelbasierte Bewertung (Heizkurve, Takten, Hysterese, Heizstab-Anteil) ist bereits präzise und deterministisch. Ein LLM bringt vor allem Mehrwert bei **Formulierung, Priorisierung und Kontextualisierung** („bei 9 °C Außentemperatur sind 7 Starts/Tag unauffällig, aber die enge Hysterese von 1,6 K verhindert längere Zyklen — Empfehlung: …"). Er ersetzt keine Sensorik und sollte keine neuen Schwellenwerte „erfinden".
+- Empfehlung: als optionales, klar gekennzeichnetes Add-on hinter einem Feature-Flag implementieren; ohne aktiviertes LLM ändert sich am Verhalten nichts. Nicht Teil von 1.0.0.
 
 ## Architektur
 
@@ -53,7 +81,7 @@ Viessmann API -┘                                      +-> Tailscale Serve
 Open-Meteo API ---------------------------------------> Wetterseite
 ```
 
-- `backend/` enthält die read-only FastAPI-API (`0.99a`).
+- `backend/` enthält die read-only FastAPI-API (`0.99b`).
 - `frontend/` enthält die statische Dashboard-Oberfläche.
 - `src/` enthält Provider, Datenmodelle, Repository-Zugriff, Berechnungen und Views.
 - `scripts/collect_snapshot.py` speichert Homematic-Raumwerte und Snapshots.
